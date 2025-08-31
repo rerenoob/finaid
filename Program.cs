@@ -9,6 +9,7 @@ using finaid.Services.FAFSA;
 using finaid.Services.Background;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Polly;
 using Polly.Extensions.Http;
 using FluentValidation;
@@ -47,6 +48,7 @@ builder.Services.AddCascadingAuthenticationState();
 
 // Add application services
 builder.Services.AddSingleton<AppStateService>();
+builder.Services.AddMemoryCache();
 
 // Add FluentValidation
 builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
