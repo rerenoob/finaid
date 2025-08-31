@@ -1,0 +1,324 @@
+@using finaid.Models.Chat
+@inject IJSRuntime JSRuntime
+
+<div class="message-input-container">
+    @if (ShowFormContext)
+    {
+        <div class="form-context-toggle">
+            <label class="form-check-label">
+                <input type="checkbox" class="form-check-input" @bind="IncludeFormContext" />
+                Include form context
+            </label>
+        </div>
+    }
+    
+    <div class="message-input-wrapper">
+        <div class="input-group">
+            <textarea @ref="InputElement"
+                      @bind="CurrentMessage" 
+                      @onkeypress="HandleKeyPress"
+                      @oninput="HandleInput"
+                      @onfocus="HandleFocus"
+                      @onblur="HandleBlur"
+                      class="form-control message-textarea @GetInputCssClass()"
+                      placeholder="@Placeholder"
+                      disabled="@(!IsEnabled)"
+                      rows="@GetTextareaRows()"
+                      maxlength="@MaxLength"
+                      id="message-input-@ComponentId"></textarea>
+            
+            <div class="input-group-append">
+                @if (ShowAttachButton)
+                {
+                    <button class="btn btn-outline-secondary attach-btn" 
+                            type="button" 
+                            @onclick="HandleAttachClick"
+                            disabled="@(!IsEnabled)"
+                            title="Attach file or document">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                }
+                
+                <button class="btn btn-primary send-btn" 
+                        type="button" 
+                        @onclick="SendMessage"
+                        disabled="@(!CanSend)"
+                        title="@GetSendButtonTitle()">
+                    @if (IsSending)
+                    {
+                        <i class="fas fa-spinner fa-spin"></i>
+                    }
+                    else
+                    {
+                        <i class="fas fa-paper-plane"></i>
+                    }
+                </button>
+            </div>
+        </div>
+        
+        @if (ShowCharacterCount)
+        {
+            <div class="character-count @(IsNearLimit ? "warning" : "")">
+                @CurrentMessage.Length / @MaxLength characters
+            </div>
+        }
+        
+        @if (ShowQuickActions && QuickActions.Any())
+        {
+            <div class="quick-actions">
+                @foreach (var action in QuickActions.Take(5))
+                {
+                    <button class="btn btn-sm btn-outline-primary quick-action"
+                            @onclick="() => SelectQuickAction(action)"
+                            disabled="@(!IsEnabled)">
+                        @action
+                    </button>
+                }
+            </div>
+        }
+    </div>
+    
+    @if (!string.IsNullOrEmpty(ValidationMessage))
+    {
+        <div class="validation-message text-danger">
+            <i class="fas fa-exclamation-triangle"></i>
+            @ValidationMessage
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public EventCallback<MessageSentEventArgs> OnMessageSent { get; set; }
+    [Parameter] public bool IsEnabled { get; set; } = true;
+    [Parameter] public string Placeholder { get; set; } = "Type your message...";
+    [Parameter] public int MaxLength { get; set; } = 4000;
+    [Parameter] public bool ShowCharacterCount { get; set; } = true;
+    [Parameter] public bool ShowFormContext { get; set; } = false;
+    [Parameter] public bool ShowAttachButton { get; set; } = false;
+    [Parameter] public bool ShowQuickActions { get; set; } = true;
+    [Parameter] public bool AutoFocus { get; set; } = true;
+    [Parameter] public bool AutoResize { get; set; } = true;
+    [Parameter] public List<string> QuickActions { get; set; } = new();
+    [Parameter] public EventCallback OnAttachClick { get; set; }
+    [Parameter] public EventCallback<bool> OnTypingChanged { get; set; }
+
+    private string CurrentMessage = string.Empty;
+    private ElementReference InputElement;
+    private bool IncludeFormContext = false;
+    private bool IsSending = false;
+    private string ValidationMessage = string.Empty;
+    private Timer? _typingTimer;
+    private bool _isTyping = false;
+    private string ComponentId = Guid.NewGuid().ToString("N")[..8];
+
+    private bool CanSend => IsEnabled && !IsSending && !string.IsNullOrWhiteSpace(CurrentMessage) && CurrentMessage.Length <= MaxLength;
+    private bool IsNearLimit => CurrentMessage.Length > MaxLength * 0.8;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && AutoFocus)
+        {
+            try
+            {
+                await InputElement.FocusAsync();
+            }
+            catch (Exception)
+            {
+                // Focus might fail if element is not visible
+            }
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        // Initialize quick actions if not provided
+        if (!QuickActions.Any())
+        {
+            QuickActions = new List<string>
+            {
+                "Help me get started",
+                "Explain this term",
+                "What documents do I need?",
+                "Check my eligibility",
+                "Review my application"
+            };
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (!CanSend)
+            return;
+
+        try
+        {
+            var message = CurrentMessage.Trim();
+            if (string.IsNullOrEmpty(message))
+                return;
+
+            IsSending = true;
+            ValidationMessage = string.Empty;
+
+            var eventArgs = new MessageSentEventArgs(message, IncludeFormContext);
+            
+            // Clear the input
+            CurrentMessage = string.Empty;
+            
+            // Stop typing indicator
+            await SetTypingStatus(false);
+            
+            StateHasChanged();
+
+            // Send the message
+            await OnMessageSent.InvokeAsync(eventArgs);
+
+            // Focus back on input
+            try
+            {
+                await InputElement.FocusAsync();
+            }
+            catch (Exception)
+            {
+                // Focus might fail
+            }
+        }
+        catch (Exception ex)
+        {
+            ValidationMessage = "Failed to send message. Please try again.";
+        }
+        finally
+        {
+            IsSending = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            if (e.ShiftKey)
+            {
+                // Shift+Enter adds a new line (default behavior)
+                return;
+            }
+            else if (e.CtrlKey || e.MetaKey)
+            {
+                // Ctrl+Enter or Cmd+Enter sends the message
+                await SendMessage();
+            }
+            else
+            {
+                // Plain Enter sends the message
+                await SendMessage();
+            }
+        }
+        else if (e.Key == "Escape")
+        {
+            // Escape clears the input
+            CurrentMessage = string.Empty;
+            ValidationMessage = string.Empty;
+            await SetTypingStatus(false);
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleInput()
+    {
+        // Clear validation message when user starts typing
+        if (!string.IsNullOrEmpty(ValidationMessage))
+        {
+            ValidationMessage = string.Empty;
+        }
+
+        // Handle typing indicator
+        if (!_isTyping && !string.IsNullOrEmpty(CurrentMessage))
+        {
+            await SetTypingStatus(true);
+        }
+
+        // Reset typing timer
+        _typingTimer?.Dispose();
+        _typingTimer = new Timer(async _ => await SetTypingStatus(false), null, 2000, Timeout.Infinite);
+
+        StateHasChanged();
+    }
+
+    private async Task HandleFocus()
+    {
+        // Optional: Handle focus events
+    }
+
+    private async Task HandleBlur()
+    {
+        await SetTypingStatus(false);
+    }
+
+    private async Task HandleAttachClick()
+    {
+        await OnAttachClick.InvokeAsync();
+    }
+
+    private async Task SelectQuickAction(string action)
+    {
+        CurrentMessage = action;
+        await SendMessage();
+    }
+
+    private async Task SetTypingStatus(bool isTyping)
+    {
+        if (_isTyping != isTyping)
+        {
+            _isTyping = isTyping;
+            if (OnTypingChanged.HasDelegate)
+            {
+                await OnTypingChanged.InvokeAsync(isTyping);
+            }
+        }
+    }
+
+    private string GetInputCssClass()
+    {
+        var cssClasses = new List<string>();
+        
+        if (!IsEnabled)
+            cssClasses.Add("disabled");
+        
+        if (IsNearLimit)
+            cssClasses.Add("near-limit");
+        
+        if (!string.IsNullOrEmpty(ValidationMessage))
+            cssClasses.Add("is-invalid");
+        
+        return string.Join(" ", cssClasses);
+    }
+
+    private int GetTextareaRows()
+    {
+        if (!AutoResize)
+            return 1;
+
+        // Calculate rows based on content
+        var lineCount = CurrentMessage.Split('\n').Length;
+        return Math.Max(1, Math.Min(lineCount, 4));
+    }
+
+    private string GetSendButtonTitle()
+    {
+        if (!IsEnabled)
+            return "Chat is disabled";
+        if (IsSending)
+            return "Sending...";
+        if (string.IsNullOrWhiteSpace(CurrentMessage))
+            return "Type a message to send";
+        if (CurrentMessage.Length > MaxLength)
+            return "Message too long";
+        
+        return "Send message (Enter)";
+    }
+
+    public void Dispose()
+    {
+        _typingTimer?.Dispose();
+    }
+}

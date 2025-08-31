@@ -1,0 +1,279 @@
+@using finaid.Models.AI
+
+<div class="message @GetMessageCssClass()">
+    <div class="message-avatar">
+        @if (Message.Role == "user")
+        {
+            <i class="fas fa-user"></i>
+        }
+        else if (Message.Role == "assistant")
+        {
+            <i class="fas fa-robot"></i>
+        }
+        else
+        {
+            <i class="fas fa-cog"></i>
+        }
+    </div>
+    
+    <div class="message-content">
+        <div class="message-bubble @GetBubbleCssClass()">
+            @if (Message.Status == MessageStatus.Failed)
+            {
+                <div class="message-error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Error:</strong> @Message.Content
+                    @if (!string.IsNullOrEmpty(Message.ErrorMessage))
+                    {
+                        <div class="error-details">@Message.ErrorMessage</div>
+                    }
+                </div>
+            }
+            else
+            {
+                @((MarkupString)FormatMessageContent(Message.Content))
+            }
+        </div>
+        
+        <div class="message-info">
+            <span class="message-time">@FormatTimestamp(Message.Timestamp)</span>
+            
+            @if (Message.Status == MessageStatus.Processing)
+            {
+                <span class="message-status processing">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Processing...
+                </span>
+            }
+            else if (Message.Status == MessageStatus.Failed)
+            {
+                <span class="message-status failed">
+                    <i class="fas fa-times-circle"></i>
+                    Failed
+                </span>
+            }
+            else if (Message.Status == MessageStatus.Completed)
+            {
+                <span class="message-status completed">
+                    <i class="fas fa-check-circle"></i>
+                </span>
+            }
+
+            @if (ShowMetadata && Message.Metadata != null)
+            {
+                <button class="btn btn-link btn-sm message-metadata-toggle" @onclick="ToggleMetadata">
+                    <i class="fas @(_showMetadata ? "fa-chevron-up" : "fa-chevron-down")"></i>
+                    Details
+                </button>
+            }
+        </div>
+
+        @if (_showMetadata && Message.Metadata != null)
+        {
+            <div class="message-metadata">
+                @if (Message.Metadata.ConfidenceLevel.HasValue)
+                {
+                    <div class="metadata-item">
+                        <strong>Confidence:</strong> @($"{Message.Metadata.ConfidenceLevel.Value:P1}")
+                    </div>
+                }
+                
+                @if (Message.Metadata.ProcessingTimeMs.HasValue)
+                {
+                    <div class="metadata-item">
+                        <strong>Processing Time:</strong> @($"{Message.Metadata.ProcessingTimeMs.Value}ms")
+                    </div>
+                }
+                
+                @if (!string.IsNullOrEmpty(Message.Metadata.ModelVersion))
+                {
+                    <div class="metadata-item">
+                        <strong>Model:</strong> @Message.Metadata.ModelVersion
+                    </div>
+                }
+                
+                @if (Message.TokenCount.HasValue)
+                {
+                    <div class="metadata-item">
+                        <strong>Tokens:</strong> @Message.TokenCount.Value
+                    </div>
+                }
+                
+                @if (!string.IsNullOrEmpty(Message.Metadata.Source))
+                {
+                    <div class="metadata-item">
+                        <strong>Source:</strong> @Message.Metadata.Source
+                    </div>
+                }
+                
+                @if (Message.Metadata.SuggestedActions.Any())
+                {
+                    <div class="metadata-item">
+                        <strong>Suggested Actions:</strong>
+                        <ul class="suggested-actions-list">
+                            @foreach (var action in Message.Metadata.SuggestedActions)
+                            {
+                                <li>@action</li>
+                            }
+                        </ul>
+                    </div>
+                }
+                
+                @if (Message.Metadata.Context.Any())
+                {
+                    <div class="metadata-item">
+                        <strong>Context:</strong>
+                        <div class="context-details">
+                            @foreach (var kvp in Message.Metadata.Context)
+                            {
+                                <div><strong>@kvp.Key:</strong> @kvp.Value</div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public finaid.Models.AI.ChatMessage Message { get; set; } = null!;
+    [Parameter] public bool ShowMetadata { get; set; } = false;
+    [Parameter] public EventCallback<finaid.Models.AI.ChatMessage> OnMessageClick { get; set; }
+    
+    private bool _showMetadata = false;
+
+    private string GetMessageCssClass()
+    {
+        var cssClasses = new List<string>();
+        
+        switch (Message.Role.ToLowerInvariant())
+        {
+            case "user":
+                cssClasses.Add("user-message");
+                break;
+            case "assistant":
+                cssClasses.Add("ai-message");
+                break;
+            case "system":
+                cssClasses.Add("system-message");
+                break;
+        }
+        
+        switch (Message.Status)
+        {
+            case MessageStatus.Processing:
+                cssClasses.Add("processing");
+                break;
+            case MessageStatus.Failed:
+                cssClasses.Add("failed");
+                break;
+            case MessageStatus.Completed:
+                cssClasses.Add("completed");
+                break;
+        }
+        
+        if (Message.ContainsSensitiveData)
+        {
+            cssClasses.Add("sensitive");
+        }
+        
+        return string.Join(" ", cssClasses);
+    }
+
+    private string GetBubbleCssClass()
+    {
+        var cssClasses = new List<string>();
+        
+        if (Message.Status == MessageStatus.Failed)
+        {
+            cssClasses.Add("error");
+        }
+        else if (Message.Role == "user")
+        {
+            cssClasses.Add("user");
+        }
+        else if (Message.Role == "assistant")
+        {
+            cssClasses.Add("assistant");
+        }
+        else
+        {
+            cssClasses.Add("system");
+        }
+        
+        return string.Join(" ", cssClasses);
+    }
+
+    private static string FormatMessageContent(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+            return string.Empty;
+        
+        // HTML encode first to prevent XSS
+        content = System.Web.HttpUtility.HtmlEncode(content);
+        
+        // Convert line breaks
+        content = content.Replace("\n", "<br>");
+        
+        // Simple markdown formatting
+        // Bold **text**
+        content = System.Text.RegularExpressions.Regex.Replace(content, 
+            @"\*\*(.*?)\*\*", "<strong>$1</strong>");
+        
+        // Italic *text*
+        content = System.Text.RegularExpressions.Regex.Replace(content, 
+            @"(?<!\*)\*([^\*\n]+?)\*(?!\*)", "<em>$1</em>");
+        
+        // Code `text`
+        content = System.Text.RegularExpressions.Regex.Replace(content, 
+            @"`([^`\n]+?)`", "<code>$1</code>");
+        
+        // Links [text](url)
+        content = System.Text.RegularExpressions.Regex.Replace(content, 
+            @"\[([^\]]+?)\]\(([^)]+?)\)", 
+            "<a href=\"$2\" target=\"_blank\" rel=\"noopener noreferrer\">$1</a>");
+        
+        // Simple bullet points
+        content = System.Text.RegularExpressions.Regex.Replace(content, 
+            @"^- (.+)$", "<li>$1</li>", System.Text.RegularExpressions.RegexOptions.Multiline);
+        
+        // Wrap consecutive list items in ul tags
+        content = System.Text.RegularExpressions.Regex.Replace(content, 
+            @"(<li>.*?</li>(?:<br><li>.*?</li>)*)", "<ul>$1</ul>");
+        
+        // Clean up extra br tags around lists
+        content = content.Replace("<br><ul>", "<ul>").Replace("</ul><br>", "</ul>");
+        content = content.Replace("</li><br><li>", "</li><li>");
+        
+        return content;
+    }
+
+    private static string FormatTimestamp(DateTime timestamp)
+    {
+        var now = DateTime.UtcNow;
+        var diff = now - timestamp;
+        
+        return diff switch
+        {
+            { TotalMinutes: < 1 } => "Just now",
+            { TotalMinutes: < 60 } => $"{(int)diff.TotalMinutes} min ago",
+            { TotalHours: < 24 } => $"{(int)diff.TotalHours} hr ago",
+            { TotalDays: < 7 } => $"{(int)diff.TotalDays} days ago",
+            _ => timestamp.ToLocalTime().ToString("MMM dd, HH:mm")
+        };
+    }
+
+    private void ToggleMetadata()
+    {
+        _showMetadata = !_showMetadata;
+    }
+
+    private async Task HandleMessageClick()
+    {
+        if (OnMessageClick.HasDelegate)
+        {
+            await OnMessageClick.InvokeAsync(Message);
+        }
+    }
+}
