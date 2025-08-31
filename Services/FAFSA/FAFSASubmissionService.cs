@@ -395,7 +395,7 @@ public class FAFSASubmissionService : IFAFSASubmissionService
             .FirstOrDefaultAsync(a => a.Id == applicationId);
     }
 
-    private async Task<SubmissionRequest> BuildSubmissionRequestAsync(
+    private Task<SubmissionRequest> BuildSubmissionRequestAsync(
         Models.Application.FAFSAApplication application,
         string fsaIdUsername,
         List<DigitalSignature> digitalSignatures)
@@ -408,7 +408,7 @@ public class FAFSASubmissionService : IFAFSASubmissionService
 
         // This would need to be implemented to extract structured data from the JSON
         // For now, return a basic request structure
-        return new SubmissionRequest
+        var result = new SubmissionRequest
         {
             ApplicationId = application.Id,
             AwardYear = application.AwardYear,
@@ -417,6 +417,8 @@ public class FAFSASubmissionService : IFAFSASubmissionService
             SubmissionTimestamp = DateTime.UtcNow
             // Additional fields would be populated from the parsed form data
         };
+        
+        return Task.FromResult(result);
     }
 
     private async Task<SubmissionResponse> SubmitToFederalSystemAsync(SubmissionRequest request)

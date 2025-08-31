@@ -45,7 +45,7 @@ public class AIRateLimitingMiddleware
                 clientId, context.Request.Path);
 
             context.Response.StatusCode = (int)HttpStatusCode.TooManyRequests;
-            context.Response.Headers.Add("Retry-After", "60");
+            context.Response.Headers.Append("Retry-After", "60");
             
             await context.Response.WriteAsync(
                 "Rate limit exceeded. Please wait before making additional AI requests.");

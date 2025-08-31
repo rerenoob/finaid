@@ -57,7 +57,7 @@ public class ApiResponse : ApiResponse<object>
         };
     }
 
-    public static ApiResponse Error(string errorMessage, HttpStatusCode statusCode = HttpStatusCode.BadRequest, List<string>? errors = null)
+    public new static ApiResponse Error(string errorMessage, HttpStatusCode statusCode = HttpStatusCode.BadRequest, List<string>? errors = null)
     {
         return new ApiResponse
         {

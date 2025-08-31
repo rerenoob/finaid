@@ -103,7 +103,7 @@ public class FAFSAValidationService
             }
 
             // Validate family members (for dependent students)
-            if (formData.StudentInfo != null && !await IsIndependentStudent(formData.StudentInfo))
+            if (formData.StudentInfo != null && !IsIndependentStudent(formData.StudentInfo))
             {
                 await ValidateFamilyInformation(formData.FamilyMembers, validationResult);
             }
@@ -221,7 +221,7 @@ public class FAFSAValidationService
         await Task.CompletedTask;
     }
 
-    private async Task<bool> IsIndependentStudent(StudentInformation student)
+    private bool IsIndependentStudent(StudentInformation student)
     {
         var age = DateTime.Now.Year - student.DateOfBirth.Year;
         if (student.DateOfBirth > DateTime.Now.AddYears(-age)) age--;
@@ -297,13 +297,13 @@ public class FAFSAValidationService
         }
     }
 
-    private async Task ValidateBusinessRules(FAFSAFormData formData, ValidationResult validationResult)
+    private Task ValidateBusinessRules(FAFSAFormData formData, ValidationResult validationResult)
     {
         // Validate consistency between sections
         if (formData.StudentInfo != null && formData.FinancialInfo != null)
         {
             // Check if financial information is consistent with student status
-            var isIndependent = await IsIndependentStudent(formData.StudentInfo);
+            var isIndependent = IsIndependentStudent(formData.StudentInfo);
             
             if (!isIndependent && !formData.FinancialInfo.ParentAdjustedGrossIncome.HasValue)
             {
@@ -325,6 +325,8 @@ public class FAFSAValidationService
                     "Number in college cannot exceed household size"));
             }
         }
+        
+        return Task.CompletedTask;
     }
 
     private async Task ValidateSignatureRequirements(
@@ -340,7 +342,7 @@ public class FAFSAValidationService
         }
 
         // For dependent students, parent signature is required
-        if (formData.StudentInfo != null && !await IsIndependentStudent(formData.StudentInfo))
+        if (formData.StudentInfo != null && !IsIndependentStudent(formData.StudentInfo))
         {
             // In a real implementation, you would check for stored parent signatures
             // For now, just add a placeholder validation
