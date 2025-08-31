@@ -20,6 +20,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<ApplicationStep> ApplicationSteps { get; set; } = null!;
     public DbSet<UserDocument> UserDocuments { get; set; } = null!;
     public DbSet<ApplicationDocument> ApplicationDocuments { get; set; } = null!;
+    public DbSet<finaid.Models.Background.BackgroundTaskStatus> BackgroundTasks { get; set; } = null!;
+    public DbSet<finaid.Models.Audit.AuditEvent> AuditEvents { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

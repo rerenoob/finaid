@@ -1,6 +1,8 @@
 using finaid.Components;
 using finaid.Data;
 using finaid.Data.Extensions;
+using finaid.Services;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,19 +11,36 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    options.UseSqlServer(connectionString);
     
-    // Enable sensitive data logging in development
     if (builder.Environment.IsDevelopment())
     {
+        // Use SQLite for development
+        options.UseSqlite(connectionString);
         options.EnableSensitiveDataLogging();
         options.EnableDetailedErrors();
+    }
+    else
+    {
+        // Use SQL Server for production
+        options.UseSqlServer(connectionString);
     }
 });
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Add authentication services (placeholder for future implementation)
+builder.Services.AddAuthentication()
+    .AddCookie();
+builder.Services.AddAuthorization();
+builder.Services.AddCascadingAuthenticationState();
+
+// Add application services
+builder.Services.AddSingleton<AppStateService>();
+
+// Add SignalR for real-time updates
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -37,6 +56,9 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 app.UseAntiforgery();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

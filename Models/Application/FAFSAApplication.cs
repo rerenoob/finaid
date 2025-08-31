@@ -21,7 +21,6 @@ public class FAFSAApplication : BaseEntity
     public DateTime? LastActivityAt { get; set; }
     
     // Form data stored as JSON for flexibility
-    [Column(TypeName = "nvarchar(max)")]
     public string? FormDataJson { get; set; }
     
     // Calculated fields

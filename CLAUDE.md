@@ -1,3 +1,10 @@
+## Important Notes
+- Update README.md and CLAUDE.md whenever applicable.
+- Use the "~/Projects/dev-prompts/RULES.md" file for additional rules and
+guidance for development.
+- Use the "~/Projects/dev-prompts/[file-name].md" files for development tasks.
+- Do not make any code changes before reading the RULES.md file mentioned above.
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -49,8 +56,3 @@ dotnet watch run
 - **HTTPS Redirection**: Enabled in production
 - **Exception Handling**: Custom error page at "/Error" for non-development environments
 
-## Important Notes
-- Update README.md and CLAUDE.md whenever applicable.
-- Use the "~/Projects/dev-prompts/RULES.md" file for additional rules and
-guidance for development.
-- Use the "~/Projects/dev-prompts/[file-name].md" files for development tasks.

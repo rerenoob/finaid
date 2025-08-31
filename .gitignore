@@ -52,3 +52,25 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Local development files
+finaid-dev.db
+*.db
+*.db-shm
+*.db-wal
+
+# Node.js (if used for front-end tooling)
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary development files
+.temp-future-tasks/
+
+# IDE files
+.vscode/
+.vs/
+*.user
+*.suo
