@@ -10,6 +10,9 @@ using finaid.Services.Background;
 using finaid.Services.AI;
 using finaid.Services.Forms;
 using finaid.Services.Knowledge;
+using finaid.Services.OCR;
+using finaid.Services.Storage;
+using finaid.BackgroundServices;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -119,6 +122,33 @@ builder.Services.AddSingleton(provider =>
 // Add Document Storage services
 builder.Services.AddScoped<finaid.Services.Storage.IDocumentStorageService, finaid.Services.Storage.DocumentStorageService>();
 builder.Services.AddScoped<finaid.Services.Security.IVirusScanningService, finaid.Services.Security.VirusScanningService>();
+
+// Configure Form Recognizer settings
+builder.Services.Configure<FormRecognizerSettings>(
+    builder.Configuration.GetSection(FormRecognizerSettings.SectionName));
+
+// Add Azure Form Recognizer client
+builder.Services.AddSingleton(provider =>
+{
+    var configuration = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<FormRecognizerSettings>>();
+    var settings = configuration.Value;
+    
+    if (string.IsNullOrEmpty(settings.Endpoint) || string.IsNullOrEmpty(settings.ApiKey))
+    {
+        throw new InvalidOperationException("Form Recognizer endpoint and API key must be configured");
+    }
+    
+    return new Azure.AI.FormRecognizer.DocumentAnalysis.DocumentAnalysisClient(
+        new Uri(settings.Endpoint), 
+        new Azure.AzureKeyCredential(settings.ApiKey));
+});
+
+// Add OCR services
+builder.Services.AddScoped<finaid.Services.OCR.IOCRService, finaid.Services.OCR.FormRecognizerService>();
+builder.Services.AddScoped<finaid.Services.OCR.DocumentClassificationService>();
+
+// Add background OCR processing service
+builder.Services.AddHostedService<finaid.BackgroundServices.OCRProcessingService>();
 
 // Register appropriate API client based on configuration
 builder.Services.AddScoped<IFederalApiClient>(serviceProvider =>

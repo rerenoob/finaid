@@ -43,6 +43,15 @@ public class UserDocument : BaseEntity
     // OCR and processing data
     public string? ExtractedText { get; set; }
     public string? ExtractedDataJson { get; set; }
+    public string? OCRJobId { get; set; }
+    public Guid? OCRResultId { get; set; }
+    public decimal? OCRConfidence { get; set; }
+    public decimal? ClassificationConfidence { get; set; }
+    public DateTime? ProcessingStartedAt { get; set; }
+    public DateTime? ProcessingCompletedAt { get; set; }
+    public string? ProcessingError { get; set; }
+    public int RetryCount { get; set; } = 0;
+    public DateTime? NextRetryAt { get; set; }
     
     // Verification information
     public DateTime? VerifiedAt { get; set; }
@@ -61,6 +70,7 @@ public class UserDocument : BaseEntity
     // Navigation properties - TODO: Fix relationships with User and ApplicationDocument
     // public Models.User.User User { get; set; } = null!;
     // public ICollection<ApplicationDocument> ApplicationDocuments { get; set; } = new List<ApplicationDocument>();
+    public OCRProcessingResult? OCRResult { get; set; }
     
     // Convert to DocumentMetadata for storage operations
     public DocumentMetadata ToMetadata()

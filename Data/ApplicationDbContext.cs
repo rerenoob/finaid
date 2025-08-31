@@ -22,6 +22,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<ApplicationStep> ApplicationSteps { get; set; } = null!;
     public DbSet<UserDocumentEntity> UserDocuments { get; set; } = null!;
     public DbSet<ApplicationDocument> ApplicationDocuments { get; set; } = null!;
+    public DbSet<OCRProcessingResult> OCRProcessingResults { get; set; } = null!;
     public DbSet<finaid.Models.Background.BackgroundTaskStatus> BackgroundTasks { get; set; } = null!;
     public DbSet<finaid.Models.Audit.AuditEvent> AuditEvents { get; set; } = null!;
 
@@ -106,6 +107,22 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.DocumentType).HasConversion<string>();
             entity.Property(e => e.Status).HasConversion<string>();
             entity.HasIndex(e => e.FileHash);
+            
+            // OCR relationship
+            entity.HasOne(e => e.OCRResult)
+                  .WithOne(ocr => ocr.Document)
+                  .HasForeignKey<OCRProcessingResult>(ocr => ocr.DocumentId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure OCRProcessingResult entity
+        modelBuilder.Entity<OCRProcessingResult>(entity =>
+        {
+            entity.Property(e => e.ProcessingStatus).HasConversion<string>();
+            entity.Property(e => e.ClassifiedType).HasConversion<string>();
+            entity.Property(e => e.OverallConfidence).HasPrecision(5, 4);
+            entity.HasIndex(e => e.DocumentId);
+            entity.HasIndex(e => e.ProcessingJobId);
         });
 
         // Configure ApplicationDocument entity (many-to-many relationship)

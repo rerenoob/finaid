@@ -1,4 +1,5 @@
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs;
 using finaid.Configuration;
 using finaid.Data;
 using finaid.Models.Documents;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using System.Text;
+using Xunit;
 
 namespace finaid.Tests.Unit.Services;
 
@@ -99,14 +101,14 @@ public class DocumentStorageTests
     public async Task ValidateDocumentAsync_ValidJpgFile_ReturnsTrue()
     {
         // Arrange
-        var jpgHeader = new byte[] { 0xFF, 0xD8, 0xFF };
+        var jpgHeader = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }; // JPG header with 4 bytes
         var stream = new MemoryStream(jpgHeader);
         
         // Act
         var result = await _service.ValidateDocumentAsync(stream, "test.jpg", 1024);
         
         // Assert
-        Assert.True(result.IsValid);
+        Assert.True(result.IsValid, result.ErrorMessage ?? "No error message");
         Assert.Null(result.ErrorMessage);
     }
 
