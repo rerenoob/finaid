@@ -4,6 +4,7 @@
 guidance for development.
 - Use the "~/Projects/dev-prompts/[file-name].md" files for development tasks.
 - Do not make any code changes before reading the RULES.md file mentioned above.
+- Don't make any code attribution for git commit
 
 # CRUSH.md - Development Guide
 
