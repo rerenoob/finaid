@@ -1,0 +1,203 @@
+/* Smart Forms AI Assistant Styles */
+
+/* Animations */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { 
+        opacity: 0; 
+    }
+    to { 
+        opacity: 1; 
+    }
+}
+
+/* Smart Form Field Styles */
+.smart-form-field {
+    margin-bottom: 1.5rem;
+}
+
+.smart-form-field .field-container {
+    position: relative;
+}
+
+.smart-form-field .ai-suggestion {
+    border-left: 3px solid #0d6efd;
+    padding-left: 0.75rem;
+    background-color: #f8f9ff;
+    border-radius: 0.25rem;
+}
+
+.smart-form-field .ai-help-panel {
+    border-left: 4px solid #17a2b8;
+    animation: slideDown 0.3s ease-out;
+}
+
+.smart-form-field .validation-suggestions .alert-sm {
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Form Section AI Styles */
+.form-section-with-ai .ai-section-help {
+    animation: slideDown 0.3s ease-out;
+}
+
+.form-section-with-ai .form-progress-panel .progress {
+    height: 6px;
+    background-color: #e9ecef;
+}
+
+.form-section-with-ai .validation-group {
+    border-left: 3px solid #dee2e6;
+    padding-left: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+/* Intelligent Form Assistant Styles */
+.intelligent-form-assistant .overall-progress {
+    animation: fadeIn 0.5s ease-in;
+}
+
+.intelligent-form-assistant .ai-assistant-panel {
+    border: 2px solid #007bff;
+    box-shadow: 0 4px 6px rgba(0, 123, 255, 0.1);
+}
+
+.intelligent-form-assistant .quality-score .score-circle {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: conic-gradient(#28a745 0% calc(var(--score) * 1%), #e9ecef calc(var(--score) * 1%) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.intelligent-form-assistant .quality-score .score-circle::before {
+    content: '';
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background: white;
+    border-radius: 50%;
+    z-index: 1;
+}
+
+.intelligent-form-assistant .quality-score .score-text {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+}
+
+.intelligent-form-assistant .validation-item {
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-left: 3px solid #dee2e6;
+    border-radius: 0.25rem;
+}
+
+.intelligent-form-assistant .form-validation-summary .severity-group {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 1rem;
+}
+
+.intelligent-form-assistant .form-validation-summary .severity-group:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+/* Loading States */
+.spinner-border-sm {
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .intelligent-form-assistant .quality-score .score-circle {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .intelligent-form-assistant .quality-score .score-circle::before {
+        width: 64px;
+        height: 64px;
+    }
+    
+    .form-section-with-ai .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .form-section-with-ai .ai-assistance-controls {
+        margin-top: 1rem;
+    }
+}
+
+/* Focus States */
+.smart-form-field input:focus,
+.smart-form-field textarea:focus,
+.smart-form-field select:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* AI Badge Styles */
+.ai-badge {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.ai-badge i {
+    margin-right: 0.25rem;
+}
+
+/* Success States */
+.field-success {
+    border-left: 4px solid #28a745;
+}
+
+.field-warning {
+    border-left: 4px solid #ffc107;
+}
+
+.field-error {
+    border-left: 4px solid #dc3545;
+}
+
+/* Accessibility Improvements */
+@media (prefers-reduced-motion: reduce) {
+    .ai-help-panel,
+    .ai-section-help,
+    .overall-progress {
+        animation: none;
+    }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+    .smart-form-field .ai-suggestion {
+        border-width: 2px;
+        background-color: #ffffff;
+    }
+    
+    .validation-item {
+        border-width: 2px;
+        background-color: #ffffff;
+    }
+}

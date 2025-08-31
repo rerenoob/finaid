@@ -7,6 +7,9 @@ using finaid.Services.Federal;
 using finaid.Services.Eligibility;
 using finaid.Services.FAFSA;
 using finaid.Services.Background;
+using finaid.Services.AI;
+using finaid.Services.Forms;
+using finaid.Services.Knowledge;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -61,6 +64,10 @@ builder.Services.Configure<FederalApiConfiguration>(
 builder.Services.Configure<EligibilitySettings>(
     builder.Configuration.GetSection(EligibilitySettings.SectionName));
 
+// Configure Azure OpenAI settings (required for AI form assistance)
+builder.Services.Configure<AzureOpenAISettings>(
+    builder.Configuration.GetSection(AzureOpenAISettings.SectionName));
+
 // Add Federal API services
 builder.Services.AddSingleton<IRateLimitingService, RateLimitingService>();
 
@@ -82,6 +89,13 @@ builder.Services.AddScoped<IFAFSASubmissionService, FAFSASubmissionService>();
 
 // Add background services
 builder.Services.AddHostedService<SubmissionStatusUpdateService>();
+
+// Add AI services (required for form assistance)
+builder.Services.AddScoped<IAIAssistantService, AzureOpenAIService>();
+builder.Services.AddScoped<IKnowledgeService, FinancialAidKnowledgeService>();
+
+// Add Form services
+builder.Services.AddScoped<IFormAssistanceService, FormAssistanceService>();
 
 // Register appropriate API client based on configuration
 builder.Services.AddScoped<IFederalApiClient>(serviceProvider =>

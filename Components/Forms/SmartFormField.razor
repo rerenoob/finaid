@@ -1,0 +1,313 @@
+@using finaid.Services.Forms
+@inject IFormAssistanceService FormAssistanceService
+@inject ILogger<SmartFormField> Logger
+
+<div class="smart-form-field">
+    <div class="field-container">
+        <label for="@FieldId" class="form-label">
+            @Label
+            @if (IsRequired)
+            {
+                <span class="text-danger">*</span>
+            }
+            @if (aiSuggestion != null && !string.IsNullOrEmpty(aiSuggestion.HelpText))
+            {
+                <button type="button" 
+                        class="btn btn-sm btn-outline-info ms-2" 
+                        @onclick="ToggleHelp"
+                        aria-label="Show field help">
+                    <i class="bi bi-question-circle"></i>
+                </button>
+            }
+        </label>
+
+        @if (FieldType == "textarea")
+        {
+            <textarea id="@FieldId" 
+                      class="form-control @(ValidationClass)"
+                      rows="@Rows"
+                      placeholder="@Placeholder"
+                      value="@Value"
+                      @oninput="OnInputChanged"
+                      @onfocus="OnFieldFocusAsync"
+                      @onblur="OnFieldBlurAsync"
+                      disabled="@IsDisabled">
+            </textarea>
+        }
+        else if (FieldType == "select")
+        {
+            <select id="@FieldId" 
+                    class="form-select @(ValidationClass)"
+                    value="@Value"
+                    @onchange="OnSelectChanged"
+                    @onfocus="OnFieldFocusAsync"
+                    disabled="@IsDisabled">
+                <option value="">@Placeholder</option>
+                @foreach (var option in Options)
+                {
+                    <option value="@option.Value">@option.Text</option>
+                }
+            </select>
+        }
+        else
+        {
+            <input id="@FieldId" 
+                   type="@FieldType" 
+                   class="form-control @(ValidationClass)"
+                   placeholder="@Placeholder"
+                   value="@Value"
+                   @oninput="OnInputChanged"
+                   @onfocus="OnFieldFocusAsync"
+                   @onblur="OnFieldBlurAsync"
+                   disabled="@IsDisabled" />
+        }
+
+        @if (showAISuggestion && aiSuggestion?.SuggestedValue != null)
+        {
+            <div class="ai-suggestion mt-2">
+                <small class="text-muted">
+                    <i class="bi bi-lightbulb"></i>
+                    AI Suggestion: 
+                    <button type="button" 
+                            class="btn btn-sm btn-link p-0 text-primary"
+                            @onclick="ApplySuggestedValue">
+                        @aiSuggestion.SuggestedValue
+                    </button>
+                </small>
+            </div>
+        }
+
+        @if (showHelp && aiSuggestion != null)
+        {
+            <div class="ai-help-panel mt-2 p-3 bg-light border rounded">
+                <div class="d-flex justify-content-between align-items-start">
+                    <h6 class="text-info">
+                        <i class="bi bi-robot"></i>
+                        AI Assistant
+                    </h6>
+                    <button type="button" 
+                            class="btn-close btn-sm" 
+                            @onclick="ToggleHelp"
+                            aria-label="Close help">
+                    </button>
+                </div>
+                
+                @if (!string.IsNullOrEmpty(aiSuggestion.HelpText))
+                {
+                    <p class="mb-2">@aiSuggestion.HelpText</p>
+                }
+
+                @if (aiSuggestion.RecommendedActions.Any())
+                {
+                    <div class="recommended-actions">
+                        <strong>Recommended actions:</strong>
+                        <ul class="small mt-1">
+                            @foreach (var action in aiSuggestion.RecommendedActions)
+                            {
+                                <li>@action</li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(aiSuggestion.WarningMessage))
+                {
+                    <div class="alert alert-warning alert-sm mt-2">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        @aiSuggestion.WarningMessage
+                    </div>
+                }
+            </div>
+        }
+
+        @if (validationSuggestions.Any())
+        {
+            <div class="validation-suggestions mt-2">
+                @foreach (var suggestion in validationSuggestions)
+                {
+                    <div class="alert alert-@GetAlertClass(suggestion.Severity) alert-sm">
+                        <i class="bi @GetAlertIcon(suggestion.SuggestionType)"></i>
+                        @suggestion.Message
+                        @if (!string.IsNullOrEmpty(suggestion.SuggestedFix))
+                        {
+                            <br>
+                            <small class="text-muted">@suggestion.SuggestedFix</small>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(ValidationMessage))
+        {
+            <div class="invalid-feedback d-block">
+                @ValidationMessage
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string FieldId { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string FieldType { get; set; } = "text";
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string Placeholder { get; set; } = string.Empty;
+    [Parameter] public bool IsRequired { get; set; } = false;
+    [Parameter] public bool IsDisabled { get; set; } = false;
+    [Parameter] public object FormContext { get; set; } = new();
+    [Parameter] public string ValidationMessage { get; set; } = string.Empty;
+    [Parameter] public bool IsValid { get; set; } = true;
+    [Parameter] public int Rows { get; set; } = 3;
+    [Parameter] public List<SelectOption> Options { get; set; } = new();
+    [Parameter] public bool EnableAI { get; set; } = true;
+    [Parameter] public EventCallback<ValidationSuggestion[]> ValidationSuggestionsChanged { get; set; }
+
+    private FormFieldSuggestion? aiSuggestion;
+    private List<ValidationSuggestion> validationSuggestions = new();
+    private bool showHelp = false;
+    private bool showAISuggestion = false;
+    private bool isLoading = false;
+
+    public class SelectOption
+    {
+        public string Value { get; set; } = string.Empty;
+        public string Text { get; set; } = string.Empty;
+    }
+
+    private string ValidationClass => IsValid ? "" : "is-invalid";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (EnableAI && !string.IsNullOrEmpty(Label))
+        {
+            await LoadAISuggestionAsync();
+        }
+    }
+
+    private async Task OnInputChanged(ChangeEventArgs e)
+    {
+        var newValue = e.Value?.ToString() ?? string.Empty;
+        Value = newValue;
+        
+        await ValueChanged.InvokeAsync(newValue);
+        
+        if (EnableAI)
+        {
+            await ValidateFieldAsync();
+        }
+    }
+
+    private async Task OnSelectChanged(ChangeEventArgs e)
+    {
+        var newValue = e.Value?.ToString() ?? string.Empty;
+        Value = newValue;
+        
+        await ValueChanged.InvokeAsync(newValue);
+        
+        if (EnableAI)
+        {
+            await ValidateFieldAsync();
+        }
+    }
+
+    private async Task OnFieldFocusAsync()
+    {
+        if (EnableAI)
+        {
+            await LoadAISuggestionAsync();
+            
+            // Show AI suggestion if we have a suggested value
+            if (aiSuggestion?.SuggestedValue != null && string.IsNullOrEmpty(Value))
+            {
+                showAISuggestion = true;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task OnFieldBlurAsync()
+    {
+        if (EnableAI && !string.IsNullOrEmpty(Value))
+        {
+            await ValidateFieldAsync();
+        }
+        
+        showAISuggestion = false;
+        StateHasChanged();
+    }
+
+    private async Task LoadAISuggestionAsync()
+    {
+        if (isLoading) return;
+        
+        isLoading = true;
+        try
+        {
+            aiSuggestion = await FormAssistanceService.GetFieldSuggestionAsync(Label, Value, FormContext);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load AI suggestion for field: {Label}", Label);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ValidateFieldAsync()
+    {
+        if (isLoading) return;
+        
+        isLoading = true;
+        try
+        {
+            validationSuggestions = await FormAssistanceService.ValidateFieldAsync(Label, Value, FormContext);
+            await ValidationSuggestionsChanged.InvokeAsync(validationSuggestions.ToArray());
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to validate field: {Label}", Label);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleHelp()
+    {
+        showHelp = !showHelp;
+    }
+
+    private async Task ApplySuggestedValue()
+    {
+        if (aiSuggestion?.SuggestedValue != null)
+        {
+            Value = aiSuggestion.SuggestedValue.ToString() ?? string.Empty;
+            await ValueChanged.InvokeAsync(Value);
+            showAISuggestion = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string GetAlertClass(string severity) => severity switch
+    {
+        "high" or "critical" => "danger",
+        "medium" => "warning",
+        "low" => "info",
+        _ => "secondary"
+    };
+
+    private static string GetAlertIcon(string suggestionType) => suggestionType switch
+    {
+        "error" => "bi-exclamation-circle-fill",
+        "warning" => "bi-exclamation-triangle-fill",
+        "info" => "bi-info-circle-fill",
+        "improvement" => "bi-lightbulb-fill",
+        _ => "bi-chat-dots-fill"
+    };
+}
