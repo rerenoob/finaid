@@ -97,6 +97,29 @@ builder.Services.AddScoped<IKnowledgeService, FinancialAidKnowledgeService>();
 // Add Form services
 builder.Services.AddScoped<IFormAssistanceService, FormAssistanceService>();
 
+// Configure Document Storage settings
+builder.Services.Configure<finaid.Configuration.DocumentStorageSettings>(
+    builder.Configuration.GetSection(finaid.Configuration.DocumentStorageSettings.SectionName));
+
+// Add Azure Blob Storage client
+builder.Services.AddSingleton(provider =>
+{
+    var configuration = provider.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("AzureStorage");
+    
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        // Use development storage emulator if no connection string is configured
+        connectionString = "UseDevelopmentStorage=true";
+    }
+    
+    return new Azure.Storage.Blobs.BlobServiceClient(connectionString);
+});
+
+// Add Document Storage services
+builder.Services.AddScoped<finaid.Services.Storage.IDocumentStorageService, finaid.Services.Storage.DocumentStorageService>();
+builder.Services.AddScoped<finaid.Services.Security.IVirusScanningService, finaid.Services.Security.VirusScanningService>();
+
 // Register appropriate API client based on configuration
 builder.Services.AddScoped<IFederalApiClient>(serviceProvider =>
 {

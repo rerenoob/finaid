@@ -3,7 +3,9 @@ using finaid.Models;
 using finaid.Models.User;
 using finaid.Models.Application;
 using finaid.Models.Document;
+using finaid.Data.Entities;
 using System.Linq.Expressions;
+using UserDocumentEntity = finaid.Data.Entities.UserDocument;
 
 namespace finaid.Data;
 
@@ -18,7 +20,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserProfile> UserProfiles { get; set; } = null!;
     public DbSet<FAFSAApplication> FAFSAApplications { get; set; } = null!;
     public DbSet<ApplicationStep> ApplicationSteps { get; set; } = null!;
-    public DbSet<UserDocument> UserDocuments { get; set; } = null!;
+    public DbSet<UserDocumentEntity> UserDocuments { get; set; } = null!;
     public DbSet<ApplicationDocument> ApplicationDocuments { get; set; } = null!;
     public DbSet<finaid.Models.Background.BackgroundTaskStatus> BackgroundTasks { get; set; } = null!;
     public DbSet<finaid.Models.Audit.AuditEvent> AuditEvents { get; set; } = null!;
@@ -93,12 +95,13 @@ public class ApplicationDbContext : DbContext
         });
 
         // Configure UserDocument entity
-        modelBuilder.Entity<UserDocument>(entity =>
+        modelBuilder.Entity<UserDocumentEntity>(entity =>
         {
-            entity.HasOne(e => e.User)
-                  .WithMany(u => u.Documents)
-                  .HasForeignKey(e => e.UserId)
-                  .OnDelete(DeleteBehavior.Cascade);
+            // TODO: Fix navigation relationships between User and UserDocument entities
+            // entity.HasOne(e => e.User)
+            //      .WithMany(u => u.Documents)
+            //      .HasForeignKey(e => e.UserId)
+            //      .OnDelete(DeleteBehavior.Cascade);
 
             entity.Property(e => e.DocumentType).HasConversion<string>();
             entity.Property(e => e.Status).HasConversion<string>();
