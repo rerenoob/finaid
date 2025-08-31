@@ -75,7 +75,7 @@ public class ConversationContextServiceTests
                   .ReturnsAsync(true);
         _redisMock.Setup(x => x.SetAddAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<CommandFlags>()))
                   .ReturnsAsync(true);
-        _redisMock.Setup(x => x.ExpireAsync(It.IsAny<RedisKey>(), It.IsAny<TimeSpan>(), It.IsAny<CommandFlags>()))
+        _redisMock.Setup(x => x.KeyExpireAsync(It.IsAny<RedisKey>(), It.IsAny<TimeSpan>(), It.IsAny<CommandFlags>()))
                   .ReturnsAsync(true);
 
         var service = new ConversationContextService(
@@ -127,7 +127,7 @@ public class ConversationContextServiceTests
             CurrentSection = "student-info"
         };
 
-        _redisMock.Setup(x => x.StringSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), It.IsAny<When>(), It.IsAny<CommandFlags>()))
+        _redisMock.Setup(x => x.StringSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), false, When.Always, It.IsAny<CommandFlags>()))
                   .ReturnsAsync(true);
         _redisMock.Setup(x => x.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
                   .ReturnsAsync(RedisValue.Null); // Session not found for activity update
@@ -143,7 +143,7 @@ public class ConversationContextServiceTests
 
         // Assert
         Assert.True(result);
-        _redisMock.Verify(x => x.StringSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), It.IsAny<When>(), It.IsAny<CommandFlags>()), 
+        _redisMock.Verify(x => x.StringSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), false, When.Always, It.IsAny<CommandFlags>()), 
             Times.AtLeastOnce);
     }
 
@@ -156,7 +156,7 @@ public class ConversationContextServiceTests
 
         _redisMock.Setup(x => x.ListRightPushAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<When>(), It.IsAny<CommandFlags>()))
                   .ReturnsAsync(1);
-        _redisMock.Setup(x => x.ExpireAsync(It.IsAny<RedisKey>(), It.IsAny<TimeSpan>(), It.IsAny<CommandFlags>()))
+        _redisMock.Setup(x => x.KeyExpireAsync(It.IsAny<RedisKey>(), It.IsAny<TimeSpan>(), It.IsAny<CommandFlags>()))
                   .ReturnsAsync(true);
         _redisMock.Setup(x => x.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
                   .ReturnsAsync(RedisValue.Null); // Session not found
@@ -207,7 +207,7 @@ public class ConversationContextServiceTests
 
         _redisMock.Setup(x => x.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
                   .ReturnsAsync(RedisValue.Null);
-        _redisMock.Setup(x => x.DeleteAsync(It.IsAny<RedisKey[]>(), It.IsAny<CommandFlags>()))
+        _redisMock.Setup(x => x.KeyDeleteAsync(It.IsAny<RedisKey[]>(), It.IsAny<CommandFlags>()))
                   .ReturnsAsync(3);
 
         var service = new ConversationContextService(
@@ -236,7 +236,7 @@ public class ConversationContextServiceTests
                   .ReturnsAsync(true);
         _redisMock.Setup(x => x.SetAddAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<CommandFlags>()))
                   .ReturnsAsync(true);
-        _redisMock.Setup(x => x.ExpireAsync(It.IsAny<RedisKey>(), It.IsAny<TimeSpan>(), It.IsAny<CommandFlags>()))
+        _redisMock.Setup(x => x.KeyExpireAsync(It.IsAny<RedisKey>(), It.IsAny<TimeSpan>(), It.IsAny<CommandFlags>()))
                   .ReturnsAsync(true);
 
         var service = new ConversationContextService(

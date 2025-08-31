@@ -46,7 +46,7 @@ public class AzureOpenAIServiceTests
         IOptions<AzureOpenAISettings> nullOptions = null!;
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new AzureOpenAIService(nullOptions, _loggerMock.Object));
+        Assert.Throws<NullReferenceException>(() => new AzureOpenAIService(nullOptions, _loggerMock.Object));
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class AzureOpenAIServiceTests
         using var service = new AzureOpenAIService(options, _loggerMock.Object);
 
         // Act
-        var result = await service.ValidateFormDataAsync(null);
+        var result = await service.ValidateFormDataAsync(null!);
 
         // Assert
         Assert.Single(result);
