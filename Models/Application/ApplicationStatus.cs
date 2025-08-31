@@ -6,8 +6,13 @@ public enum ApplicationStatus
     InProgress = 1,
     ReviewRequired = 2,
     Submitted = 3,
-    Processed = 4,
-    Approved = 5,
-    Rejected = 6,
-    Expired = 7
+    Processing = 4,
+    Processed = 5,
+    Approved = 6,
+    Rejected = 7,
+    Completed = 8,
+    Failed = 9,
+    VerificationRequired = 10,
+    OnHold = 11,
+    Expired = 12
 }

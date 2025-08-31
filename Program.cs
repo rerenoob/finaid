@@ -1,9 +1,18 @@
 using finaid.Components;
+using finaid.Configuration;
 using finaid.Data;
 using finaid.Data.Extensions;
 using finaid.Services;
+using finaid.Services.Federal;
+using finaid.Services.Eligibility;
+using finaid.Services.FAFSA;
+using finaid.Services.Background;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Polly;
+using Polly.Extensions.Http;
+using FluentValidation;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +48,52 @@ builder.Services.AddCascadingAuthenticationState();
 // Add application services
 builder.Services.AddSingleton<AppStateService>();
 
+// Add FluentValidation
+builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+// Configure Federal API settings
+builder.Services.Configure<FederalApiConfiguration>(
+    builder.Configuration.GetSection(FederalApiConfiguration.SectionName));
+
+// Configure Eligibility settings
+builder.Services.Configure<EligibilitySettings>(
+    builder.Configuration.GetSection(EligibilitySettings.SectionName));
+
+// Add Federal API services
+builder.Services.AddSingleton<IRateLimitingService, RateLimitingService>();
+
+// Configure HttpClient with retry policies
+builder.Services.AddHttpClient<IFederalApiClient, FederalApiClientService>()
+    .AddPolicyHandler(GetRetryPolicy())
+    .AddPolicyHandler(GetCircuitBreakerPolicy());
+
+// Add mock service for development
+builder.Services.AddScoped<MockFederalApiService>();
+
+// Add eligibility services
+builder.Services.AddScoped<EFCCalculator>();
+builder.Services.AddScoped<IEligibilityService, EligibilityCalculationService>();
+
+// Add FAFSA services
+builder.Services.AddScoped<FAFSAValidationService>();
+builder.Services.AddScoped<IFAFSASubmissionService, FAFSASubmissionService>();
+
+// Add background services
+builder.Services.AddHostedService<SubmissionStatusUpdateService>();
+
+// Register appropriate API client based on configuration
+builder.Services.AddScoped<IFederalApiClient>(serviceProvider =>
+{
+    var configuration = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<FederalApiConfiguration>>();
+    
+    if (configuration.Value.UseMockService)
+    {
+        return serviceProvider.GetRequiredService<MockFederalApiService>();
+    }
+    
+    return serviceProvider.GetRequiredService<FederalApiClientService>();
+});
+
 // Add SignalR for real-time updates
 builder.Services.AddSignalR();
 
@@ -67,3 +122,35 @@ app.MapRazorComponents<App>()
 await app.InitializeDatabaseAsync();
 
 app.Run();
+
+// Policy methods for HTTP client configuration
+static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+{
+    return HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .OrResult(msg => !msg.IsSuccessStatusCode)
+        .WaitAndRetryAsync(
+            retryCount: 3,
+            sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+            onRetry: (outcome, timespan, retryCount, context) =>
+            {
+                Console.WriteLine($"Retry {retryCount} for {context.OperationKey} in {timespan.TotalMilliseconds}ms");
+            });
+}
+
+static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy()
+{
+    return HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .CircuitBreakerAsync(
+            handledEventsAllowedBeforeBreaking: 3,
+            durationOfBreak: TimeSpan.FromSeconds(30),
+            onBreak: (exception, timespan) =>
+            {
+                // Log circuit breaker opening
+            },
+            onReset: () =>
+            {
+                // Log circuit breaker closing
+            });
+}
