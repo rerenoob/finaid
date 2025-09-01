@@ -1,5 +1,6 @@
 @using finaid.Models.Documents
 @using finaid.Services.Documents
+@using DocumentStatus = finaid.Models.Document.DocumentStatus
 @inject IDocumentUIService DocumentUIService
 @inject IJSRuntime JSRuntime
 
@@ -112,7 +113,7 @@
             }
         </div>
 
-        @if (Document.Status == finaid.Models.Documents.DocumentStatus.Processing)
+        @if (Document.Status == DocumentStatus.Processing)
         {
             <div class="processing-banner">
                 <div class="d-flex align-items-center">

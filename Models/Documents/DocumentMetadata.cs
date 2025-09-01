@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using finaid.Models.Document;
 
 namespace finaid.Models.Documents;
 
@@ -17,7 +18,7 @@ public class DocumentMetadata
     
     public long FileSizeBytes { get; set; }
     
-    public Document.DocumentType Type { get; set; }
+    public DocumentType Type { get; set; }
     
     public DocumentStatus Status { get; set; } = DocumentStatus.Uploaded;
     
@@ -37,14 +38,3 @@ public class DocumentMetadata
     public DateTime? ExpiresAt { get; set; }
 }
 
-public enum DocumentStatus
-{
-    Uploaded = 0,
-    Scanning = 1,
-    Clean = 2,
-    Quarantined = 3,
-    Processing = 4,
-    Verified = 5,
-    Rejected = 6,
-    Expired = 7
-}

@@ -8,6 +8,7 @@ using finaid.Data.Entities;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
+using DocumentStatus = finaid.Models.Document.DocumentStatus;
 
 namespace finaid.Services.Storage;
 

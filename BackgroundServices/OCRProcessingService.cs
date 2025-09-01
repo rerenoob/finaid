@@ -3,7 +3,6 @@ using finaid.Data.Entities;
 using finaid.Models.Document;
 using finaid.Models.OCR;
 using finaid.Services.OCR;
-using DocumentStatus = finaid.Models.Documents.DocumentStatus;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -191,11 +190,11 @@ public class OCRProcessingService : BackgroundService
         }
         else if (ocrResult.Status == ProcessingStatus.RequiresReview || ocrResult.OverallConfidence < 0.8m)
         {
-            document.Status = (finaid.Models.Documents.DocumentStatus)finaid.Models.Document.DocumentStatus.RequiresAction;
+            document.Status = DocumentStatus.RequiresAction;
         }
         else if (ocrResult.ValidationErrors.Any())
         {
-            document.Status = (finaid.Models.Documents.DocumentStatus)finaid.Models.Document.DocumentStatus.RequiresAction;
+            document.Status = DocumentStatus.RequiresAction;
         }
         else
         {

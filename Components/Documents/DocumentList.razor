@@ -1,6 +1,7 @@
 @using finaid.Models.Documents
 @using DocumentModel = finaid.Models.Document
 @using finaid.Services.Documents
+@using DocumentStatus = finaid.Models.Document.DocumentStatus
 @inject IDocumentUIService DocumentUIService
 @inject IJSRuntime JSRuntime
 
@@ -41,7 +42,7 @@ else
                             </span>
                         </div>
                         <div class="document-status">
-                            @if (document.Status == finaid.Models.Documents.DocumentStatus.Processing)
+                            @if (document.Status == DocumentStatus.Processing)
                             {
                                 <div class="processing-status">
                                     <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
@@ -77,7 +78,7 @@ else
                             <i class="bi bi-download"></i>
                         </button>
                         
-                        @if (document.Status != finaid.Models.Documents.DocumentStatus.Processing)
+                        @if (document.Status != DocumentStatus.Processing)
                         {
                             <button type="button" 
                                     class="btn btn-sm btn-outline-danger" 
@@ -191,48 +192,39 @@ else
         };
     }
 
-    private string GetStatusDisplay(finaid.Models.Documents.DocumentStatus status)
+    private string GetStatusDisplay(DocumentStatus status)
     {
         return status switch
         {
-            finaid.Models.Documents.DocumentStatus.Uploaded => "Uploaded",
-            finaid.Models.Documents.DocumentStatus.Processing => "Processing",
-            finaid.Models.Documents.DocumentStatus.Verified => "Verified",
-            finaid.Models.Documents.DocumentStatus.Rejected => "Rejected",
-            finaid.Models.Documents.DocumentStatus.Expired => "Expired",
-            finaid.Models.Documents.DocumentStatus.Scanning => "Scanning",
-            finaid.Models.Documents.DocumentStatus.Clean => "Clean",
-            finaid.Models.Documents.DocumentStatus.Quarantined => "Quarantined",
+            DocumentStatus.Uploaded => "Uploaded",
+            DocumentStatus.Processing => "Processing",
+            DocumentStatus.Verified => "Verified",
+            DocumentStatus.Rejected => "Rejected",
+            DocumentStatus.RequiresAction => "Requires Action",
             _ => status.ToString()
         };
     }
 
-    private string GetStatusBadgeClass(finaid.Models.Documents.DocumentStatus status)
+    private string GetStatusBadgeClass(DocumentStatus status)
     {
         return status switch
         {
-            finaid.Models.Documents.DocumentStatus.Verified => "bg-success",
-            finaid.Models.Documents.DocumentStatus.Processing => "bg-warning text-dark",
-            finaid.Models.Documents.DocumentStatus.Rejected => "bg-danger",
-            finaid.Models.Documents.DocumentStatus.Expired => "bg-warning text-dark",
-            finaid.Models.Documents.DocumentStatus.Scanning => "bg-info",
-            finaid.Models.Documents.DocumentStatus.Clean => "bg-success",
-            finaid.Models.Documents.DocumentStatus.Quarantined => "bg-danger",
+            DocumentStatus.Verified => "bg-success",
+            DocumentStatus.Processing => "bg-warning text-dark",
+            DocumentStatus.Rejected => "bg-danger",
+            DocumentStatus.RequiresAction => "bg-warning text-dark",
             _ => "bg-secondary"
         };
     }
 
-    private string GetStatusIcon(finaid.Models.Documents.DocumentStatus status)
+    private string GetStatusIcon(DocumentStatus status)
     {
         return status switch
         {
-            finaid.Models.Documents.DocumentStatus.Verified => "bi bi-check-circle-fill",
-            finaid.Models.Documents.DocumentStatus.Processing => "bi bi-arrow-clockwise",
-            finaid.Models.Documents.DocumentStatus.Rejected => "bi bi-x-circle-fill",
-            finaid.Models.Documents.DocumentStatus.Expired => "bi bi-exclamation-triangle-fill",
-            finaid.Models.Documents.DocumentStatus.Scanning => "bi bi-search",
-            finaid.Models.Documents.DocumentStatus.Clean => "bi bi-shield-check",
-            finaid.Models.Documents.DocumentStatus.Quarantined => "bi bi-shield-exclamation",
+            DocumentStatus.Verified => "bi bi-check-circle-fill",
+            DocumentStatus.Processing => "bi bi-arrow-clockwise",
+            DocumentStatus.Rejected => "bi bi-x-circle-fill",
+            DocumentStatus.RequiresAction => "bi bi-exclamation-triangle-fill",
             _ => "bi bi-circle-fill"
         };
     }

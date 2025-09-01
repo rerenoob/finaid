@@ -25,6 +25,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<OCRProcessingResult> OCRProcessingResults { get; set; } = null!;
     public DbSet<finaid.Models.Background.BackgroundTaskStatus> BackgroundTasks { get; set; } = null!;
     public DbSet<finaid.Models.Audit.AuditEvent> AuditEvents { get; set; } = null!;
+    public DbSet<DocumentVerification> DocumentVerifications { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -139,6 +140,22 @@ public class ApplicationDbContext : DbContext
                   .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasIndex(e => new { e.ApplicationId, e.DocumentId }).IsUnique();
+        });
+
+        // Configure DocumentVerification entity
+        modelBuilder.Entity<DocumentVerification>(entity =>
+        {
+            entity.HasOne(e => e.Document)
+                  .WithMany()
+                  .HasForeignKey(e => e.DocumentId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(e => e.Status).HasConversion<string>();
+            entity.Property(e => e.VerificationType).HasConversion<string>();
+            entity.Property(e => e.OverallScore).HasPrecision(5, 4);
+            entity.HasIndex(e => e.DocumentId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => new { e.UserId, e.Status });
         });
 
         // Seed data for development
