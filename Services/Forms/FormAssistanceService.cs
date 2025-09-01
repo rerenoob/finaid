@@ -285,7 +285,7 @@ public class FormAssistanceService : IFormAssistanceService
             """;
     }
 
-    private async Task EnhanceSuggestionWithAIAnalysis(FormFieldSuggestion suggestion, string aiContent, string fieldName)
+    private Task EnhanceSuggestionWithAIAnalysis(FormFieldSuggestion suggestion, string aiContent, string fieldName)
     {
         // Parse AI response for actionable recommendations
         if (aiContent.Contains("required", StringComparison.OrdinalIgnoreCase) || 
@@ -302,6 +302,7 @@ public class FormAssistanceService : IFormAssistanceService
 
         // Extract actionable steps
         suggestion.RecommendedActions = ExtractRecommendedActions(aiContent);
+        return Task.CompletedTask;
     }
 
     private List<ValidationSuggestion> PerformBasicValidation(string fieldName, object? value, string? requirements)

@@ -277,16 +277,18 @@
         }
     }
 
-    private async Task HandleSuggestedActions(List<string> actions)
+    private Task HandleSuggestedActions(List<string> actions)
     {
         SuggestedActions = actions ?? new List<string>();
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
-    private async Task HandleUserTyping(string connectionId, bool isTyping)
+    private Task HandleUserTyping(string connectionId, bool isTyping)
     {
         // Handle other users typing (could show indicators)
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
     private async Task HandleAITyping(bool isTyping)
@@ -314,16 +316,17 @@
         }
     }
 
-    private async Task HandleStreamingStart()
+    private Task HandleStreamingStart()
     {
         IsStreaming = true;
         IsProcessing = true;
         CurrentStreamingId = Guid.NewGuid().ToString();
         StreamingContent = string.Empty;
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
-    private async Task HandleStreamingComplete(string streamingId)
+    private Task HandleStreamingComplete(string streamingId)
     {
         IsStreaming = false;
         IsProcessing = false;
@@ -338,9 +341,10 @@
         StreamingContent = string.Empty;
         CurrentStreamingId = null;
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
-    private async Task HandleStreamingError(string error)
+    private Task HandleStreamingError(string error)
     {
         IsStreaming = false;
         IsProcessing = false;
@@ -352,9 +356,10 @@
         StreamingContent = string.Empty;
         CurrentStreamingId = null;
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
-    private async Task HandleError(string error)
+    private Task HandleError(string error)
     {
         Logger.LogError("Chat error: {Error}", error);
         IsProcessing = false;
@@ -363,6 +368,7 @@
         Messages.Add(errorMessage);
         
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
     private async Task HandleSessionHistory(List<finaid.Models.AI.ChatMessage> history)
@@ -470,10 +476,11 @@
     }
 
     // SignalR connection event handlers
-    private async Task OnReconnecting(Exception? exception)
+    private Task OnReconnecting(Exception? exception)
     {
         IsConnected = false;
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
     private async Task OnReconnected(string? connectionId)
@@ -486,10 +493,11 @@
         StateHasChanged();
     }
 
-    private async Task OnConnectionClosed(Exception? exception)
+    private Task OnConnectionClosed(Exception? exception)
     {
         IsConnected = false;
         StateHasChanged();
+        return Task.CompletedTask;
     }
 
     public async ValueTask DisposeAsync()

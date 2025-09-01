@@ -244,9 +244,10 @@
         StateHasChanged();
     }
 
-    private async Task HandleFocus()
+    private Task HandleFocus()
     {
         // Optional: Handle focus events
+        return Task.CompletedTask;
     }
 
     private async Task HandleBlur()

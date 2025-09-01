@@ -160,13 +160,13 @@
         }
     }
 
-    private async Task<bool> ValidateFile(IBrowserFile file)
+    private Task<bool> ValidateFile(IBrowserFile file)
     {
         // File size validation
         if (file.Size > 50 * 1024 * 1024) // 50MB
         {
             uploadError = $"File '{file.Name}' is too large. Maximum file size is 50MB.";
-            return false;
+            return Task.FromResult(false);
         }
 
         // File type validation
@@ -176,10 +176,10 @@
         if (!allowedTypes.Contains(extension))
         {
             uploadError = $"File type '{extension}' is not supported. Please upload PDF, JPG, PNG, or TIFF files only.";
-            return false;
+            return Task.FromResult(false);
         }
 
-        return true;
+        return Task.FromResult(true);
     }
 
     private void HandleDragEnter()
@@ -197,10 +197,11 @@
         isDragOver = false;
     }
 
-    private async Task HandleDrop()
+    private Task HandleDrop()
     {
         isDragOver = false;
         // File handling is managed by the InputFile component
+        return Task.CompletedTask;
     }
 
     private async Task TriggerFileInput()

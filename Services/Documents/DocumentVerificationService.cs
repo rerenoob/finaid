@@ -128,11 +128,11 @@ public class DocumentVerificationService : IDocumentVerificationService
         }
     }
 
-    public async Task<List<VerificationRule>> GetVerificationRulesAsync(DocumentType documentType)
+    public Task<List<VerificationRule>> GetVerificationRulesAsync(DocumentType documentType)
     {
-        return _verificationRules.TryGetValue(documentType, out var rules) 
+        return Task.FromResult(_verificationRules.TryGetValue(documentType, out var rules) 
             ? rules 
-            : _verificationRules[DocumentType.Other];
+            : _verificationRules[DocumentType.Other]);
     }
 
     public async Task<bool> ApproveDocumentAsync(Guid documentId, string approverUserId, string notes)
@@ -338,7 +338,7 @@ public class DocumentVerificationService : IDocumentVerificationService
         return check;
     }
 
-    private async Task PerformContentValidationAsync(VerificationCheck check, OCRResult ocrResult, VerificationRule rule)
+    private Task PerformContentValidationAsync(VerificationCheck check, OCRResult ocrResult, VerificationRule rule)
     {
         // Validate that extracted content meets minimum confidence threshold
         var lowConfidenceFields = ocrResult.Fields.Where(f => f.Confidence < rule.MinimumScore).ToList();
@@ -356,9 +356,10 @@ public class DocumentVerificationService : IDocumentVerificationService
             check.Confidence = ocrResult.Fields.Any() ? ocrResult.Fields.Average(f => f.Confidence) : 1.0m;
             check.Details = "All extracted fields meet confidence requirements";
         }
+        return Task.CompletedTask;
     }
 
-    private async Task PerformFormatCheckAsync(VerificationCheck check, Data.Entities.UserDocument document, VerificationRule rule)
+    private Task PerformFormatCheckAsync(VerificationCheck check, Data.Entities.UserDocument document, VerificationRule rule)
     {
         // Validate file format and basic document properties
         var allowedTypes = new[] { ".pdf", ".jpg", ".jpeg", ".png", ".tiff", ".tif" };
@@ -384,9 +385,10 @@ public class DocumentVerificationService : IDocumentVerificationService
             check.Confidence = 1.0m;
             check.Details = "File format and size are valid";
         }
+        return Task.CompletedTask;
     }
 
-    private async Task PerformDataConsistencyCheckAsync(VerificationCheck check, OCRResult ocrResult, VerificationRule rule)
+    private Task PerformDataConsistencyCheckAsync(VerificationCheck check, OCRResult ocrResult, VerificationRule rule)
     {
         // Check for data consistency within the document
         var inconsistencies = new List<string>();
@@ -428,9 +430,10 @@ public class DocumentVerificationService : IDocumentVerificationService
             check.Confidence = 1.0m;
             check.Details = "Data consistency checks passed";
         }
+        return Task.CompletedTask;
     }
 
-    private async Task PerformRequiredFieldCheckAsync(VerificationCheck check, OCRResult ocrResult, VerificationRule rule)
+    private Task PerformRequiredFieldCheckAsync(VerificationCheck check, OCRResult ocrResult, VerificationRule rule)
     {
         // Get required fields from rule parameters
         if (!rule.Parameters.TryGetValue("requiredFields", out var requiredFieldsObj) ||
@@ -439,7 +442,7 @@ public class DocumentVerificationService : IDocumentVerificationService
             check.Passed = true;
             check.Confidence = 1.0m;
             check.Details = "No required fields specified";
-            return;
+            return Task.CompletedTask;
         }
 
         var extractedFieldNames = ocrResult.Fields.Select(f => f.FieldName).ToList();
@@ -459,9 +462,10 @@ public class DocumentVerificationService : IDocumentVerificationService
             check.Confidence = 1.0m;
             check.Details = "All required fields are present";
         }
+        return Task.CompletedTask;
     }
 
-    private async Task PerformDateRangeCheckAsync(VerificationCheck check, OCRResult ocrResult, VerificationRule rule)
+    private Task PerformDateRangeCheckAsync(VerificationCheck check, OCRResult ocrResult, VerificationRule rule)
     {
         // Check if dates fall within acceptable ranges
         var dateFields = ocrResult.Fields.Where(f => f.DataType == DataTypes.Date).ToList();
@@ -493,6 +497,7 @@ public class DocumentVerificationService : IDocumentVerificationService
             check.Confidence = 1.0m;
             check.Details = "All dates are within acceptable range";
         }
+        return Task.CompletedTask;
     }
 
     private DocumentVerificationStatus DetermineVerificationStatus(VerificationResult result, VerificationType type)

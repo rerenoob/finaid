@@ -221,15 +221,15 @@ public class FormPrePopulationService : IFormPrePopulationService
         return mappedData;
     }
 
-    public async Task<List<FieldMapping>> GetFieldMappingsAsync(DocumentType documentType, string targetForm)
+    public Task<List<FieldMapping>> GetFieldMappingsAsync(DocumentType documentType, string targetForm)
     {
         var mappingKey = $"{documentType}_{targetForm}";
-        return _fieldMappings.TryGetValue(mappingKey, out var mappings) 
+        return Task.FromResult(_fieldMappings.TryGetValue(mappingKey, out var mappings) 
             ? mappings 
-            : new List<FieldMapping>();
+            : new List<FieldMapping>());
     }
 
-    public async Task<bool> ValidatePrePopulatedDataAsync(Dictionary<string, object> formData, string formType)
+    public Task<bool> ValidatePrePopulatedDataAsync(Dictionary<string, object> formData, string formType)
     {
         var isValid = true;
 
@@ -281,10 +281,10 @@ public class FormPrePopulationService : IFormPrePopulationService
             }
         }
 
-        return isValid;
+        return Task.FromResult(isValid);
     }
 
-    public async Task SavePrePopulatedDataAsync(Guid userId, string formType, Dictionary<string, object> data)
+    public Task SavePrePopulatedDataAsync(Guid userId, string formType, Dictionary<string, object> data)
     {
         try
         {
@@ -299,44 +299,45 @@ public class FormPrePopulationService : IFormPrePopulationService
         {
             _logger.LogError(ex, "Failed to save pre-populated data for user {UserId}", userId);
         }
+        return Task.CompletedTask;
     }
 
-    public async Task<PrePopulationResult> GetSavedPrePopulationAsync(Guid userId, string formType)
+    public Task<PrePopulationResult> GetSavedPrePopulationAsync(Guid userId, string formType)
     {
         try
         {
             // In a real implementation, this would retrieve from database
             // For now, return an empty result
-            return new PrePopulationResult
+            return Task.FromResult(new PrePopulationResult
             {
                 Success = false,
                 ProcessedAt = DateTime.UtcNow,
                 ValidationWarnings = { "Saved pre-population data not implemented yet" }
-            };
+            });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to retrieve saved pre-population data for user {UserId}", userId);
             
-            return new PrePopulationResult
+            return Task.FromResult(new PrePopulationResult
             {
                 Success = false,
                 ProcessedAt = DateTime.UtcNow,
                 ValidationWarnings = { $"Failed to retrieve data: {ex.Message}" }
-            };
+            });
         }
     }
 
-    public async Task<List<DataTransformation>> GetAvailableTransformationsAsync()
+    public Task<List<DataTransformation>> GetAvailableTransformationsAsync()
     {
-        return _dataTransformations;
+        return Task.FromResult(_dataTransformations);
     }
 
-    private async Task<object?> ApplyTransformationsAsync(object value, FieldMapping mapping)
+    private Task<object?> ApplyTransformationsAsync(object value, FieldMapping mapping)
     {
         if (value == null || !mapping.TransformationRules.Any())
         {
-            return value;
+            return Task.FromResult<object?>(value);
         }
 
         var currentValue = value;
@@ -359,7 +360,7 @@ public class FormPrePopulationService : IFormPrePopulationService
             }
         }
 
-        return currentValue;
+        return Task.FromResult<object?>(currentValue);
     }
 
     private bool AreValuesEqual(object value1, object value2)
@@ -542,7 +543,7 @@ public class FormPrePopulationService : IFormPrePopulationService
                     {
                         return $"{str.Substring(0, 3)}-{str.Substring(3, 2)}-{str.Substring(5, 4)}";
                     }
-                    return value;
+                    return value!;
                 },
                 IsReversible = true
             },
@@ -564,7 +565,7 @@ public class FormPrePopulationService : IFormPrePopulationService
                             return result;
                         }
                     }
-                    return value;
+                    return value!;
                 },
                 IsReversible = false
             },
@@ -582,7 +583,7 @@ public class FormPrePopulationService : IFormPrePopulationService
                         var parts = str.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                         return parts.Length > 0 ? parts[0] : str;
                     }
-                    return value;
+                    return value!;
                 },
                 IsReversible = false
             },
@@ -600,7 +601,7 @@ public class FormPrePopulationService : IFormPrePopulationService
                         var parts = str.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                         return parts.Length > 1 ? parts[^1] : str;
                     }
-                    return value;
+                    return value!;
                 },
                 IsReversible = false
             },
@@ -617,7 +618,7 @@ public class FormPrePopulationService : IFormPrePopulationService
                     {
                         return parsed.ToString("yyyy-MM-dd");
                     }
-                    return value;
+                    return value!;
                 },
                 IsReversible = true
             }
