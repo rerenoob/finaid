@@ -152,7 +152,7 @@
     }
 
     /* Animations */
-    @keyframes connected-pulse {
+    @@keyframes connected-pulse {
         0% {
             transform: scale(0.95);
             box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7);
@@ -169,7 +169,7 @@
         }
     }
 
-    @keyframes disconnected-flash {
+    @@keyframes disconnected-flash {
         0%, 50% {
             opacity: 1;
         }
@@ -178,7 +178,7 @@
         }
     }
 
-    @keyframes connecting-spin {
+    @@keyframes connecting-spin {
         from {
             transform: rotate(0deg);
         }
@@ -187,7 +187,7 @@
         }
     }
 
-    @keyframes spin {
+    @@keyframes spin {
         from {
             transform: rotate(0deg);
         }
@@ -197,7 +197,7 @@
     }
 
     /* Reduced motion */
-    @media (prefers-reduced-motion: reduce) {
+    @@media (prefers-reduced-motion: reduce) {
         .status-dot,
         .spin {
             animation: none !important;
@@ -219,7 +219,7 @@
     }
 
     /* High contrast mode */
-    @media (prefers-contrast: high) {
+    @@media (prefers-contrast: high) {
         .status-dot {
             border: 2px solid;
         }

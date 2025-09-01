@@ -68,7 +68,7 @@
                     const track = container.querySelector('.cards-track');
                     
                     if (track) {{
-                        const currentTransform = -{currentIndex * 100}% + (${deltaX} / container.offsetWidth * 100)%;
+                        const currentTransform = -{currentIndex * 100}% + (deltaX / container.offsetWidth * 100)%;
                         track.style.transform = `translateX(${{currentTransform}}%)`;
                         track.style.transition = 'none';
                     }}
@@ -280,14 +280,14 @@
     }
 
     /* Accessibility improvements */
-    @media (prefers-reduced-motion: reduce) {
+    @@media (prefers-reduced-motion: reduce) {
         .cards-track {
             transition: none !important;
         }
     }
 
     /* High contrast mode */
-    @media (prefers-contrast: high) {
+    @@media (prefers-contrast: high) {
         .swipeable-cards::before {
             background: linear-gradient(to right, rgba(0,0,0,0.5), transparent);
         }

@@ -188,7 +188,7 @@
     }
 
     /* High contrast mode */
-    @media (prefers-contrast: high) {
+    @@media (prefers-contrast: high) {
         .mobile-action-item {
             border-width: 2px;
         }
@@ -199,7 +199,7 @@
     }
 
     /* Reduced motion */
-    @media (prefers-reduced-motion: reduce) {
+    @@media (prefers-reduced-motion: reduce) {
         .mobile-action-item,
         .mobile-action-icon {
             transition: none;
@@ -211,7 +211,7 @@
     }
 
     /* Small screens */
-    @media (max-width: 480px) {
+    @@media (max-width: 480px) {
         .mobile-actions-grid {
             gap: 0.5rem;
         }
@@ -234,7 +234,7 @@
     }
 
     /* Very small screens - single column */
-    @media (max-width: 350px) {
+    @@media (max-width: 350px) {
         .mobile-actions-grid {
             grid-template-columns: 1fr;
             gap: 0.5rem;
@@ -254,7 +254,7 @@
     }
 
     /* Landscape orientation on small screens */
-    @media (orientation: landscape) and (max-height: 500px) {
+    @@media (orientation: landscape) and (max-height: 500px) {
         .mobile-actions-grid {
             grid-template-columns: repeat(3, 1fr);
         }
