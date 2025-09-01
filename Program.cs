@@ -153,6 +153,13 @@ builder.Services.AddHostedService<finaid.BackgroundServices.OCRProcessingService
 // Add Document UI services
 builder.Services.AddScoped<finaid.Services.Documents.IDocumentUIService, finaid.Services.Documents.DocumentUIService>();
 
+// Add Dashboard services
+builder.Services.AddScoped<finaid.Services.Dashboard.IDashboardDataService, finaid.Services.Dashboard.DashboardDataService>();
+builder.Services.AddScoped<finaid.Services.Progress.ProgressCalculationService>();
+
+// Add UI services
+builder.Services.AddScoped<finaid.Services.UI.ViewportService>();
+
 // Register appropriate API client based on configuration
 builder.Services.AddScoped<IFederalApiClient>(serviceProvider =>
 {

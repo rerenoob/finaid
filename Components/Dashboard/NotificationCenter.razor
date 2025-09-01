@@ -1,0 +1,309 @@
+@using finaid.Models.Dashboard
+
+@*
+    Shows notification summary and recent notifications
+*@
+
+<div class="notification-center">
+    @if (Summary != null)
+    {
+        <div class="notification-summary">
+            <div class="summary-stats">
+                @if (Summary.UnreadCount > 0)
+                {
+                    <div class="unread-count">
+                        <span class="badge bg-primary">@Summary.UnreadCount</span>
+                        <span class="count-label">unread</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="all-read">
+                        <i class="bi bi-check-circle text-success"></i>
+                        <span class="count-label">All caught up!</span>
+                    </div>
+                }
+            </div>
+        </div>
+        
+        @if (Summary.RecentNotifications?.Any() == true)
+        {
+            <div class="notifications-list">
+                @foreach (var notification in Summary.RecentNotifications.Take(MaxItems))
+                {
+                    <div class="notification-item @(!notification.IsRead ? "notification-unread" : "")">
+                        <div class="notification-indicator">
+                            <i class="@GetNotificationIcon(notification.Type) @GetNotificationIconClass(notification.Type)"></i>
+                            @if (!notification.IsRead)
+                            {
+                                <div class="unread-dot"></div>
+                            }
+                        </div>
+                        
+                        <div class="notification-content">
+                            <div class="notification-header">
+                                <h6 class="notification-title">@notification.Title</h6>
+                                <span class="notification-time">@GetRelativeTime(notification.Timestamp)</span>
+                            </div>
+                            
+                            <p class="notification-message">@notification.Message</p>
+                            
+                            @if (!string.IsNullOrEmpty(notification.ActionUrl))
+                            {
+                                <div class="notification-action">
+                                    <a href="@notification.ActionUrl" class="btn btn-sm btn-link p-0">
+                                        View Details <i class="bi bi-arrow-right"></i>
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+            
+            @if (Summary.TotalCount > MaxItems)
+            {
+                <div class="show-more-notifications">
+                    <a href="/notifications" class="btn btn-link btn-sm">
+                        View all @Summary.TotalCount notifications <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="no-notifications">
+                <i class="bi bi-bell-slash text-muted"></i>
+                <p class="text-muted mb-0 mt-2">No recent notifications</p>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="loading-notifications">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span class="ms-2">Loading notifications...</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public NotificationSummary? Summary { get; set; }
+    [Parameter] public int MaxItems { get; set; } = 5;
+    
+    private string GetNotificationIcon(NotificationType type)
+    {
+        return type switch
+        {
+            NotificationType.Info => "bi-info-circle",
+            NotificationType.Success => "bi-check-circle",
+            NotificationType.Warning => "bi-exclamation-triangle",
+            NotificationType.Error => "bi-x-circle",
+            NotificationType.Reminder => "bi-clock",
+            _ => "bi-bell"
+        };
+    }
+    
+    private string GetNotificationIconClass(NotificationType type)
+    {
+        return type switch
+        {
+            NotificationType.Info => "text-info",
+            NotificationType.Success => "text-success",
+            NotificationType.Warning => "text-warning",
+            NotificationType.Error => "text-danger",
+            NotificationType.Reminder => "text-primary",
+            _ => "text-secondary"
+        };
+    }
+    
+    private string GetRelativeTime(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+        
+        return timeSpan switch
+        {
+            { TotalSeconds: < 60 } => "just now",
+            { TotalMinutes: < 60 } => $"{(int)timeSpan.TotalMinutes}m ago",
+            { TotalHours: < 24 } => $"{(int)timeSpan.TotalHours}h ago",
+            { TotalDays: < 7 } => $"{(int)timeSpan.TotalDays}d ago",
+            _ => dateTime.ToString("MMM dd")
+        };
+    }
+}
+
+<style>
+    .notification-summary {
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .summary-stats {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .unread-count {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .count-label {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    
+    .all-read {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .notifications-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .notification-item {
+        display: flex;
+        padding: 0.75rem;
+        border-radius: 0.375rem;
+        background-color: #f8f9fa;
+        border: 1px solid transparent;
+        transition: all 0.15s ease-in-out;
+    }
+    
+    .notification-item:hover {
+        background-color: #fff;
+        border-color: #e9ecef;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .notification-item.notification-unread {
+        background-color: #fff;
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.125rem rgba(13, 110, 253, 0.1);
+    }
+    
+    .notification-indicator {
+        flex-shrink: 0;
+        width: 2rem;
+        height: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 0.75rem;
+        position: relative;
+    }
+    
+    .unread-dot {
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        width: 8px;
+        height: 8px;
+        background-color: #dc3545;
+        border-radius: 50%;
+        border: 2px solid #fff;
+    }
+    
+    .notification-content {
+        flex-grow: 1;
+        min-width: 0;
+    }
+    
+    .notification-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.25rem;
+    }
+    
+    .notification-title {
+        margin-bottom: 0;
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #495057;
+        flex-grow: 1;
+        margin-right: 0.5rem;
+    }
+    
+    .notification-time {
+        font-size: 0.75rem;
+        color: #6c757d;
+        white-space: nowrap;
+    }
+    
+    .notification-message {
+        margin-bottom: 0.5rem;
+        font-size: 0.8rem;
+        color: #6c757d;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .notification-action {
+        margin-top: 0.25rem;
+    }
+    
+    .show-more-notifications {
+        text-align: center;
+        padding-top: 0.75rem;
+        border-top: 1px solid #e9ecef;
+        margin-top: 0.75rem;
+    }
+    
+    .no-notifications {
+        text-align: center;
+        padding: 1.5rem 1rem;
+        color: #6c757d;
+    }
+    
+    .loading-notifications {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        color: #6c757d;
+    }
+    
+    @media (max-width: 768px) {
+        .notification-item {
+            padding: 0.5rem;
+        }
+        
+        .notification-indicator {
+            width: 1.75rem;
+            height: 1.75rem;
+            margin-right: 0.5rem;
+        }
+        
+        .notification-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .notification-time {
+            margin-top: 0.125rem;
+        }
+        
+        .notification-title {
+            margin-right: 0;
+            font-size: 0.8rem;
+        }
+        
+        .notification-message {
+            font-size: 0.75rem;
+        }
+    }
+</style>

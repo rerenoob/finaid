@@ -1,0 +1,278 @@
+@using finaid.Models.Dashboard
+
+@*
+    Touch-optimized quick actions for mobile dashboard
+*@
+
+<div class="mobile-quick-actions">
+    @if (Actions?.Any() == true)
+    {
+        <div class="mobile-actions-grid">
+            @foreach (var action in Actions.Take(6)) // Limit to 6 for mobile
+            {
+                <a href="@action.Url" 
+                   class="mobile-action-item @(action.IsEnabled ? "" : "disabled")"
+                   title="@action.Description">
+                    <div class="mobile-action-icon @GetActionIconClass(action)">
+                        <i class="@action.Icon"></i>
+                    </div>
+                    <span class="mobile-action-title">@action.Title</span>
+                </a>
+            }
+        </div>
+        
+        @if (Actions.Count > 6)
+        {
+            <div class="more-actions">
+                <a href="/actions" class="btn btn-outline-primary btn-sm w-100">
+                    View All Actions (@Actions.Count)
+                </a>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="no-actions-mobile">
+            <i class="bi bi-check-circle-fill text-success display-6"></i>
+            <h6 class="mt-2">All Caught Up!</h6>
+            <p class="text-muted">No urgent actions needed.</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<QuickAction>? Actions { get; set; }
+    
+    private string GetActionIconClass(QuickAction action)
+    {
+        return action.CssClass switch
+        {
+            "btn-primary" => "action-primary",
+            "btn-warning" => "action-warning",
+            "btn-danger" => "action-danger",
+            "btn-success" => "action-success",
+            "btn-info" => "action-info",
+            _ => "action-secondary"
+        };
+    }
+}
+
+<style>
+    .mobile-quick-actions {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .mobile-actions-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        flex-grow: 1;
+    }
+
+    .mobile-action-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        text-decoration: none;
+        border: 1px solid #e9ecef;
+        border-radius: 0.75rem;
+        background-color: #fff;
+        transition: all 0.15s ease-in-out;
+        color: inherit;
+        min-height: 80px;
+        text-align: center;
+    }
+
+    .mobile-action-item:hover:not(.disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .mobile-action-item:active:not(.disabled) {
+        transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .mobile-action-item.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    .mobile-action-icon {
+        width: 2.5rem;
+        height: 2.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.5rem;
+        margin-bottom: 0.5rem;
+        font-size: 1.25rem;
+        transition: all 0.15s ease-in-out;
+    }
+
+    .mobile-action-icon.action-primary {
+        background-color: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+    }
+
+    .mobile-action-icon.action-warning {
+        background-color: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+    }
+
+    .mobile-action-icon.action-danger {
+        background-color: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+    }
+
+    .mobile-action-icon.action-success {
+        background-color: rgba(25, 135, 84, 0.1);
+        color: #198754;
+    }
+
+    .mobile-action-icon.action-info {
+        background-color: rgba(13, 202, 240, 0.1);
+        color: #0dcaf0;
+    }
+
+    .mobile-action-icon.action-secondary {
+        background-color: rgba(108, 117, 125, 0.1);
+        color: #6c757d;
+    }
+
+    .mobile-action-title {
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: #495057;
+        line-height: 1.2;
+        word-break: break-word;
+    }
+
+    .more-actions {
+        margin-top: auto;
+        padding-top: 0.75rem;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .no-actions-mobile {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #6c757d;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+    }
+
+    /* Touch feedback */
+    .mobile-action-item:active:not(.disabled) .mobile-action-icon {
+        transform: scale(0.95);
+    }
+
+    /* Accessibility improvements */
+    .mobile-action-item:focus {
+        outline: 2px solid #0d6efd;
+        outline-offset: 2px;
+    }
+
+    .mobile-action-item:focus:not(:focus-visible) {
+        outline: none;
+    }
+
+    /* High contrast mode */
+    @media (prefers-contrast: high) {
+        .mobile-action-item {
+            border-width: 2px;
+        }
+
+        .mobile-action-icon {
+            border: 2px solid currentColor;
+        }
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+        .mobile-action-item,
+        .mobile-action-icon {
+            transition: none;
+        }
+
+        .mobile-action-item:hover:not(.disabled) {
+            transform: none;
+        }
+    }
+
+    /* Small screens */
+    @media (max-width: 480px) {
+        .mobile-actions-grid {
+            gap: 0.5rem;
+        }
+
+        .mobile-action-item {
+            padding: 0.75rem 0.5rem;
+            min-height: 70px;
+        }
+
+        .mobile-action-icon {
+            width: 2rem;
+            height: 2rem;
+            font-size: 1rem;
+            margin-bottom: 0.375rem;
+        }
+
+        .mobile-action-title {
+            font-size: 0.8rem;
+        }
+    }
+
+    /* Very small screens - single column */
+    @media (max-width: 350px) {
+        .mobile-actions-grid {
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+        }
+
+        .mobile-action-item {
+            flex-direction: row;
+            justify-content: flex-start;
+            text-align: left;
+            min-height: 60px;
+        }
+
+        .mobile-action-icon {
+            margin-bottom: 0;
+            margin-right: 0.75rem;
+        }
+    }
+
+    /* Landscape orientation on small screens */
+    @media (orientation: landscape) and (max-height: 500px) {
+        .mobile-actions-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .mobile-action-item {
+            min-height: 60px;
+            padding: 0.75rem;
+        }
+
+        .mobile-action-icon {
+            width: 2rem;
+            height: 2rem;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .mobile-action-title {
+            font-size: 0.8rem;
+        }
+    }
+</style>

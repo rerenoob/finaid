@@ -1,33 +1,104 @@
 @page "/dashboard"
+@using finaid.Models.Dashboard
+@using finaid.Models.User
+@using finaid.Services.Dashboard
+@inject IDashboardDataService DashboardDataService
+@inject finaid.Services.AppStateService AppState
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Dashboard - FinAid Assistant</PageTitle>
 
-<div class="dashboard-container">
-    <div class="mb-4">
-        <h1 class="display-6">Dashboard</h1>
-        <p class="lead text-muted">Overview of your financial aid progress and activities.</p>
-    </div>
+<link href="~/css/dashboard.css" rel="stylesheet" />
 
-    <!-- This will be the full dashboard implementation -->
-    <div class="row g-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body text-center py-5">
-                    <span class="bi bi-graph-up display-1 text-primary mb-3"></span>
-                    <h3>Dashboard Coming Soon</h3>
-                    <p class="text-muted">
-                        Your personalized dashboard with detailed analytics, progress tracking, 
-                        and comprehensive financial aid insights will be available here.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
+<div class="dashboard-container">
+    <DashboardLayout 
+        DashboardData="@dashboardData"
+        CurrentUser="@currentUser"
+        OnRefresh="@RefreshDashboardData"
+        IsLoadingApplications="@isLoadingApplications"
+        IsLoadingDeadlines="@isLoadingDeadlines"
+        IsLoadingActivities="@isLoadingActivities"
+        IsLoadingNotifications="@isLoadingNotifications"
+        IsLoadingQuickActions="@isLoadingQuickActions" />
 </div>
 
-<style>
-    .dashboard-container {
-        max-width: 1200px;
-        margin: 0 auto;
+@code {
+    private DashboardViewModel dashboardData = new();
+    private User currentUser = new() 
+    { 
+        FirstName = "John", 
+        LastName = "Doe", 
+        Email = "john.doe@example.com" 
+    };
+    
+    private bool isLoadingApplications = false;
+    private bool isLoadingDeadlines = false;
+    private bool isLoadingActivities = false;
+    private bool isLoadingNotifications = false;
+    private bool isLoadingQuickActions = false;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Get current user from app state (mock data for now)
+            currentUser = AppState.GetValue<User>(AppStateKeys.CurrentUser, currentUser);
+            
+            // Load dashboard data
+            await LoadDashboardData();
+        }
+        catch (Exception ex)
+        {
+            // Log error and show empty dashboard
+            Console.WriteLine($"Error initializing dashboard: {ex.Message}");
+            dashboardData = new DashboardViewModel();
+        }
     }
-</style>
+    
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            // Set all loading states
+            SetAllLoadingStates(true);
+            StateHasChanged();
+            
+            // Load dashboard data - in a real app, this would use the current user's ID
+            dashboardData = await DashboardDataService.GetDashboardDataAsync(Guid.NewGuid());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dashboard data: {ex.Message}");
+            dashboardData = new DashboardViewModel();
+        }
+        finally
+        {
+            SetAllLoadingStates(false);
+            StateHasChanged();
+        }
+    }
+    
+    private async Task RefreshDashboardData()
+    {
+        await LoadDashboardData();
+        
+        // Optional: Show a toast notification
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("console.log", "Dashboard refreshed");
+        }
+        catch (Exception)
+        {
+            // Ignore JS errors
+        }
+    }
+    
+    private void SetAllLoadingStates(bool isLoading)
+    {
+        isLoadingApplications = isLoading;
+        isLoadingDeadlines = isLoading;
+        isLoadingActivities = isLoading;
+        isLoadingNotifications = isLoading;
+        isLoadingQuickActions = isLoading;
+    }
+}

@@ -1,0 +1,416 @@
+@using finaid.Models.Dashboard
+
+@*
+    Main progress summary component for dashboard
+*@
+
+<div class="progress-overview">
+    @if (ApplicationData?.Any() == true)
+    {
+        <div class="progress-summary-grid">
+            @foreach (var application in ApplicationData)
+            {
+                <div class="progress-summary-card">
+                    <div class="card-header">
+                        <div class="application-info">
+                            <h6 class="application-title">@application.ApplicationType Application</h6>
+                            <span class="status-badge @GetStatusBadgeClass(application.Status)">
+                                @GetStatusDisplay(application.Status)
+                            </span>
+                        </div>
+                        
+                        <div class="progress-circle">
+                            <svg viewBox="0 0 36 36" class="circular-chart">
+                                <path class="circle-bg"
+                                      d="M18 2.0845
+                                         a 15.9155 15.9155 0 0 1 0 31.831
+                                         a 15.9155 15.9155 0 0 1 0 -31.831"
+                                />
+                                <path class="circle @GetProgressCircleClass(application)"
+                                      stroke-dasharray="@($"{application.OverallCompletion}, 100")"
+                                      d="M18 2.0845
+                                         a 15.9155 15.9155 0 0 1 0 31.831
+                                         a 15.9155 15.9155 0 0 1 0 -31.831"
+                                />
+                                <text x="18" y="20.35" class="percentage">@($"{application.OverallCompletion:F0}%")</text>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        @if (application.HasBlockingIssues)
+                        {
+                            <div class="blocking-issues-alert">
+                                <i class="bi bi-exclamation-triangle text-warning"></i>
+                                <span class="alert-text">@application.BlockingIssueCount issue(s) need attention</span>
+                            </div>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(application.NextStepDescription))
+                        {
+                            <div class="next-step-info">
+                                <strong>Next Step:</strong>
+                                <span class="next-step-text">@application.NextStepDescription</span>
+                            </div>
+                        }
+                        
+                        @if (application.NextDeadline.HasValue)
+                        {
+                            <div class="deadline-info">
+                                <i class="bi bi-calendar3 text-muted"></i>
+                                <span class="deadline-text">
+                                    Due @application.NextDeadline.Value.ToString("MMM dd, yyyy") 
+                                    (@GetDaysUntilDeadline(application.NextDeadline.Value) days remaining)
+                                </span>
+                            </div>
+                        }
+                        
+                        <div class="card-actions">
+                            <a href="/applications/@application.ApplicationId" class="btn btn-primary btn-sm">
+                                Continue Application
+                            </a>
+                            @if (application.HasBlockingIssues)
+                            {
+                                <a href="/applications/@application.ApplicationId/issues" class="btn btn-warning btn-sm">
+                                    Resolve Issues
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        
+        <div class="overall-progress-summary">
+            <div class="summary-stats">
+                <div class="stat-item">
+                    <span class="stat-value">@GetCompletedApplicationsCount()</span>
+                    <span class="stat-label">Completed</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">@GetInProgressApplicationsCount()</span>
+                    <span class="stat-label">In Progress</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">@GetOverallAverageProgress():F0%</span>
+                    <span class="stat-label">Overall Progress</span>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="no-applications-state">
+            <i class="bi bi-graph-up display-4 text-muted"></i>
+            <h5 class="mt-3">No Applications Started</h5>
+            <p class="text-muted">Start your first financial aid application to see your progress here.</p>
+            <div class="getting-started-actions">
+                <a href="/fafsa" class="btn btn-primary">Start FAFSA</a>
+                <a href="/getting-started" class="btn btn-outline-secondary">Getting Started Guide</a>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<ApplicationProgress>? ApplicationData { get; set; }
+    
+    private string GetStatusBadgeClass(ApplicationStatus status)
+    {
+        return status switch
+        {
+            ApplicationStatus.NotStarted => "bg-secondary",
+            ApplicationStatus.InProgress => "bg-primary",
+            ApplicationStatus.AwaitingDocuments => "bg-warning text-dark",
+            ApplicationStatus.AwaitingReview => "bg-info text-dark",
+            ApplicationStatus.Submitted => "bg-success",
+            ApplicationStatus.Approved => "bg-success",
+            ApplicationStatus.Rejected => "bg-danger",
+            ApplicationStatus.RequiresAction => "bg-warning text-dark",
+            _ => "bg-secondary"
+        };
+    }
+    
+    private string GetStatusDisplay(ApplicationStatus status)
+    {
+        return status switch
+        {
+            ApplicationStatus.NotStarted => "Not Started",
+            ApplicationStatus.InProgress => "In Progress",
+            ApplicationStatus.AwaitingDocuments => "Awaiting Documents",
+            ApplicationStatus.AwaitingReview => "Under Review",
+            ApplicationStatus.Submitted => "Submitted",
+            ApplicationStatus.Approved => "Approved",
+            ApplicationStatus.Rejected => "Rejected",
+            ApplicationStatus.RequiresAction => "Action Required",
+            _ => status.ToString()
+        };
+    }
+    
+    private string GetProgressCircleClass(ApplicationProgress application)
+    {
+        if (application.HasBlockingIssues)
+            return "circle-warning";
+        
+        return application.OverallCompletion switch
+        {
+            < 25 => "circle-danger",
+            < 50 => "circle-warning",
+            < 75 => "circle-info",
+            _ => "circle-success"
+        };
+    }
+    
+    private int GetDaysUntilDeadline(DateTime deadline)
+    {
+        return Math.Max(0, (int)(deadline - DateTime.UtcNow).TotalDays);
+    }
+    
+    private int GetCompletedApplicationsCount()
+    {
+        return ApplicationData?.Count(a => a.Status == ApplicationStatus.Submitted || 
+                                           a.Status == ApplicationStatus.Approved) ?? 0;
+    }
+    
+    private int GetInProgressApplicationsCount()
+    {
+        return ApplicationData?.Count(a => a.Status == ApplicationStatus.InProgress ||
+                                           a.Status == ApplicationStatus.AwaitingDocuments ||
+                                           a.Status == ApplicationStatus.RequiresAction) ?? 0;
+    }
+    
+    private decimal GetOverallAverageProgress()
+    {
+        if (ApplicationData?.Any() != true)
+            return 0;
+        
+        return ApplicationData.Average(a => a.OverallCompletion);
+    }
+}
+
+<style>
+    .progress-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .progress-summary-card {
+        border: 1px solid #e9ecef;
+        border-radius: 0.75rem;
+        background-color: #fff;
+        overflow: hidden;
+        transition: all 0.15s ease-in-out;
+    }
+    
+    .progress-summary-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+    }
+    
+    .card-header {
+        padding: 1.25rem;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .application-info {
+        flex-grow: 1;
+    }
+    
+    .application-title {
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+    
+    .progress-circle {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .circular-chart {
+        width: 100%;
+        height: 100%;
+        transform: rotate(-90deg);
+    }
+    
+    .circle-bg {
+        fill: none;
+        stroke: #e9ecef;
+        stroke-width: 3.8;
+    }
+    
+    .circle {
+        fill: none;
+        stroke-width: 2.8;
+        stroke-linecap: round;
+        animation: progress-animation 1s ease-in-out;
+    }
+    
+    .circle-success { stroke: #198754; }
+    .circle-info { stroke: #0dcaf0; }
+    .circle-warning { stroke: #ffc107; }
+    .circle-danger { stroke: #dc3545; }
+    
+    .percentage {
+        fill: #495057;
+        font-family: system-ui, sans-serif;
+        font-size: 0.4em;
+        text-anchor: middle;
+        font-weight: 600;
+        transform: rotate(90deg);
+    }
+    
+    .card-body {
+        padding: 1.25rem;
+    }
+    
+    .blocking-issues-alert {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        background-color: rgba(255, 193, 7, 0.1);
+        border: 1px solid rgba(255, 193, 7, 0.3);
+        border-radius: 0.375rem;
+        margin-bottom: 1rem;
+    }
+    
+    .alert-text {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #664d03;
+    }
+    
+    .next-step-info {
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        background-color: rgba(13, 110, 253, 0.05);
+        border-left: 3px solid #0d6efd;
+        border-radius: 0.25rem;
+    }
+    
+    .next-step-info strong {
+        color: #0d6efd;
+        margin-right: 0.5rem;
+    }
+    
+    .next-step-text {
+        color: #495057;
+        font-size: 0.9rem;
+    }
+    
+    .deadline-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    
+    .card-actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    
+    .overall-progress-summary {
+        background-color: #fff;
+        border: 1px solid #e9ecef;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+    }
+    
+    .summary-stats {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .stat-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #0d6efd;
+        line-height: 1;
+        margin-bottom: 0.25rem;
+    }
+    
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 500;
+    }
+    
+    .no-applications-state {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: #6c757d;
+    }
+    
+    .getting-started-actions {
+        margin-top: 1.5rem;
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    @keyframes progress-animation {
+        0% { stroke-dasharray: 0 100; }
+    }
+    
+    @media (max-width: 768px) {
+        .progress-summary-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        .card-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .progress-circle {
+            align-self: flex-end;
+        }
+        
+        .summary-stats {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .card-actions {
+            justify-content: center;
+        }
+        
+        .getting-started-actions {
+            flex-direction: column;
+            align-items: center;
+        }
+    }
+</style>

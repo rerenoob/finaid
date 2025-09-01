@@ -1,0 +1,197 @@
+@using finaid.Models.Dashboard
+
+@*
+    Quick action buttons and shortcuts
+*@
+
+<div class="quick-actions-section">
+    <h5 class="section-title">Quick Actions</h5>
+    
+    <div class="quick-actions-grid">
+        @if (Actions?.Any() == true)
+        {
+            @foreach (var action in Actions.OrderBy(a => a.Priority))
+            {
+                <a href="@action.Url" 
+                   class="quick-action-item @action.CssClass @(action.IsEnabled ? "" : "disabled")"
+                   title="@action.Description">
+                    <div class="action-icon">
+                        <i class="@action.Icon"></i>
+                    </div>
+                    <div class="action-content">
+                        <h6 class="action-title">@action.Title</h6>
+                        <p class="action-description">@action.Description</p>
+                    </div>
+                    <div class="action-arrow">
+                        <i class="bi bi-arrow-right"></i>
+                    </div>
+                </a>
+            }
+        }
+        else
+        {
+            <div class="no-actions-message">
+                <i class="bi bi-check-circle text-success display-6"></i>
+                <h6 class="mt-2">All caught up!</h6>
+                <p class="text-muted">No urgent actions needed right now.</p>
+            </div>
+        }
+    </div>
+    
+    @if (ShowNewUserActions)
+    {
+        <div class="new-user-section mt-4">
+            <h6 class="text-muted">New to financial aid?</h6>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/getting-started" class="btn btn-outline-info btn-sm">
+                    <i class="bi bi-book me-1"></i>
+                    Getting Started Guide
+                </a>
+                <a href="/faq" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-question-circle me-1"></i>
+                    FAQ
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<QuickAction>? Actions { get; set; }
+    [Parameter] public bool ShowNewUserActions { get; set; } = false;
+}
+
+<style>
+    .quick-actions-section {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .section-title {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .quick-actions-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        flex-grow: 1;
+    }
+    
+    .quick-action-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        text-decoration: none;
+        border: 1px solid #e9ecef;
+        border-radius: 0.5rem;
+        background-color: #fff;
+        transition: all 0.15s ease-in-out;
+        color: inherit;
+    }
+    
+    .quick-action-item:hover:not(.disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    .quick-action-item.disabled {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+    
+    .action-icon {
+        width: 3rem;
+        height: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        margin-right: 1rem;
+        font-size: 1.25rem;
+        color: #495057;
+    }
+    
+    .btn-primary .action-icon {
+        background-color: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+    }
+    
+    .btn-secondary .action-icon {
+        background-color: rgba(108, 117, 125, 0.1);
+        color: #6c757d;
+    }
+    
+    .btn-outline-primary .action-icon {
+        background-color: rgba(13, 110, 253, 0.05);
+        color: #0d6efd;
+    }
+    
+    .action-content {
+        flex-grow: 1;
+    }
+    
+    .action-title {
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    
+    .action-description {
+        margin-bottom: 0;
+        font-size: 0.875rem;
+        color: #6c757d;
+        line-height: 1.3;
+    }
+    
+    .action-arrow {
+        margin-left: 1rem;
+        opacity: 0.5;
+        transition: all 0.15s ease-in-out;
+    }
+    
+    .quick-action-item:hover .action-arrow {
+        opacity: 1;
+        transform: translateX(3px);
+    }
+    
+    .no-actions-message {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #6c757d;
+    }
+    
+    .new-user-section {
+        padding-top: 1rem;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    @media (max-width: 768px) {
+        .quick-action-item {
+            padding: 0.75rem;
+        }
+        
+        .action-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            font-size: 1rem;
+            margin-right: 0.75rem;
+        }
+        
+        .action-title {
+            font-size: 0.9rem;
+        }
+        
+        .action-description {
+            font-size: 0.8rem;
+        }
+    }
+</style>
