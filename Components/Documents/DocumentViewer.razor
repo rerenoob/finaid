@@ -1,0 +1,426 @@
+@using finaid.Models.Documents
+@using finaid.Services.Documents
+@inject IDocumentUIService DocumentUIService
+@inject IJSRuntime JSRuntime
+
+@if (Document != null)
+{
+    <div class="document-viewer">
+        <div class="viewer-header">
+            <div class="document-info">
+                <h5 class="document-title mb-1">
+                    <i class="@GetDocumentIcon() me-2"></i>
+                    @Document.FileName
+                </h5>
+                <div class="document-meta">
+                    <span class="badge @GetTypeBadgeClass()">@GetDocumentTypeDisplay()</span>
+                    <span class="text-muted">@FormatFileSize(Document.FileSizeBytes)</span>
+                    <span class="text-muted">Uploaded @FormatUploadDate(Document.UploadedAt)</span>
+                </div>
+            </div>
+            
+            <div class="viewer-actions">
+                <button type="button" class="btn btn-outline-primary btn-sm" @onclick="DownloadDocument">
+                    <i class="bi bi-download me-1"></i>
+                    Download
+                </button>
+                
+                @if (OnClose.HasDelegate)
+                {
+                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CloseViewer">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="viewer-content">
+            @if (IsLoading)
+            {
+                <div class="loading-container">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Loading document...</span>
+                        </div>
+                        <div>Loading document preview...</div>
+                    </div>
+                </div>
+            }
+            else if (HasError)
+            {
+                <div class="error-container">
+                    <div class="text-center py-5">
+                        <i class="bi bi-exclamation-triangle fs-1 text-warning mb-3"></i>
+                        <h6 class="mb-2">Unable to preview document</h6>
+                        <p class="text-muted mb-3">@ErrorMessage</p>
+                        <button type="button" class="btn btn-primary" @onclick="DownloadDocument">
+                            <i class="bi bi-download me-1"></i>
+                            Download to view
+                        </button>
+                    </div>
+                </div>
+            }
+            else
+            {
+                @if (IsImage)
+                {
+                    <div class="image-preview">
+                        <img src="@PreviewUrl" alt="@Document.FileName" class="img-fluid" />
+                    </div>
+                }
+                else if (IsPdf)
+                {
+                    <div class="pdf-preview">
+                        @if (!string.IsNullOrEmpty(PreviewUrl))
+                        {
+                            <iframe src="@PreviewUrl" 
+                                    title="@Document.FileName" 
+                                    class="pdf-frame"
+                                    allowfullscreen>
+                            </iframe>
+                        }
+                        else
+                        {
+                            <div class="pdf-placeholder">
+                                <div class="text-center py-5">
+                                    <i class="bi bi-file-earmark-pdf fs-1 text-danger mb-3"></i>
+                                    <h6 class="mb-2">PDF Preview</h6>
+                                    <p class="text-muted mb-3">Click download to view the PDF document</p>
+                                    <button type="button" class="btn btn-primary" @onclick="DownloadDocument">
+                                        <i class="bi bi-download me-1"></i>
+                                        Download PDF
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="unsupported-preview">
+                        <div class="text-center py-5">
+                            <i class="bi bi-file-earmark fs-1 text-secondary mb-3"></i>
+                            <h6 class="mb-2">Preview not available</h6>
+                            <p class="text-muted mb-3">This file type cannot be previewed in the browser</p>
+                            <button type="button" class="btn btn-primary" @onclick="DownloadDocument">
+                                <i class="bi bi-download me-1"></i>
+                                Download to view
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+
+        @if (Document.Status == finaid.Models.Documents.DocumentStatus.Processing)
+        {
+            <div class="processing-banner">
+                <div class="d-flex align-items-center">
+                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                        <span class="visually-hidden">Processing...</span>
+                    </div>
+                    <span class="text-primary">This document is currently being processed...</span>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public DocumentMetadata Document { get; set; } = null!;
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private bool IsLoading { get; set; } = true;
+    private bool HasError { get; set; } = false;
+    private string ErrorMessage { get; set; } = string.Empty;
+    private string PreviewUrl { get; set; } = string.Empty;
+
+    private bool IsImage => Document.ContentType.StartsWith("image/");
+    private bool IsPdf => Document.ContentType == "application/pdf";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPreview();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Document != null)
+        {
+            await LoadPreview();
+        }
+    }
+
+    private async Task LoadPreview()
+    {
+        IsLoading = true;
+        HasError = false;
+        StateHasChanged();
+
+        try
+        {
+            // For images and PDFs, generate a preview URL
+            if (IsImage || IsPdf)
+            {
+                PreviewUrl = await DocumentUIService.GetDocumentDownloadUrlAsync(Document.Id, TimeSpan.FromHours(1));
+            }
+        }
+        catch (Exception ex)
+        {
+            HasError = true;
+            ErrorMessage = "Failed to load document preview. Please try downloading the document instead.";
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadDocument()
+    {
+        try
+        {
+            var downloadUrl = await DocumentUIService.GetDocumentDownloadUrlAsync(Document.Id, TimeSpan.FromHours(1));
+            await JSRuntime.InvokeVoidAsync("window.open", downloadUrl, "_blank");
+        }
+        catch (Exception)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Unable to download document. Please try again.");
+        }
+    }
+
+    private async Task CloseViewer()
+    {
+        if (OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+
+    private string GetDocumentIcon()
+    {
+        var extension = Path.GetExtension(Document.FileName).ToLowerInvariant();
+        return extension switch
+        {
+            ".pdf" => "bi bi-file-earmark-pdf-fill text-danger",
+            ".jpg" or ".jpeg" or ".png" or ".gif" => "bi bi-file-earmark-image-fill text-success",
+            ".tiff" or ".tif" => "bi bi-file-earmark-image-fill text-info",
+            ".doc" or ".docx" => "bi bi-file-earmark-word-fill text-primary",
+            _ => "bi bi-file-earmark-fill text-secondary"
+        };
+    }
+
+    private string GetDocumentTypeDisplay()
+    {
+        return Document.Type switch
+        {
+            finaid.Models.Document.DocumentType.TaxReturn => "Tax Return",
+            finaid.Models.Document.DocumentType.W2Form => "W-2 Form",
+            finaid.Models.Document.DocumentType.BankStatement => "Bank Statement",
+            finaid.Models.Document.DocumentType.SocialSecurityCard => "Social Security Card",
+            finaid.Models.Document.DocumentType.DriversLicense => "Driver's License",
+            finaid.Models.Document.DocumentType.Passport => "Passport",
+            finaid.Models.Document.DocumentType.BirthCertificate => "Birth Certificate",
+            finaid.Models.Document.DocumentType.HighSchoolTranscript => "High School Transcript",
+            finaid.Models.Document.DocumentType.CollegeTranscript => "College Transcript",
+            finaid.Models.Document.DocumentType.VerificationWorksheet => "Verification Worksheet",
+            _ => "Other"
+        };
+    }
+
+    private string GetTypeBadgeClass()
+    {
+        return Document.Type switch
+        {
+            finaid.Models.Document.DocumentType.TaxReturn => "bg-primary",
+            finaid.Models.Document.DocumentType.W2Form => "bg-success",
+            finaid.Models.Document.DocumentType.BankStatement => "bg-info",
+            finaid.Models.Document.DocumentType.SocialSecurityCard or 
+            finaid.Models.Document.DocumentType.DriversLicense or 
+            finaid.Models.Document.DocumentType.Passport or 
+            finaid.Models.Document.DocumentType.BirthCertificate => "bg-warning text-dark",
+            finaid.Models.Document.DocumentType.HighSchoolTranscript or 
+            finaid.Models.Document.DocumentType.CollegeTranscript => "bg-purple",
+            finaid.Models.Document.DocumentType.VerificationWorksheet => "bg-secondary",
+            _ => "bg-light text-dark"
+        };
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        const int scale = 1024;
+        string[] orders = { "B", "KB", "MB", "GB" };
+        long max = (long)Math.Pow(scale, orders.Length - 1);
+        
+        foreach (string order in orders)
+        {
+            if (bytes > max)
+                return $"{decimal.Divide(bytes, max):##.##} {order}";
+            max /= scale;
+        }
+        
+        return $"{bytes} B";
+    }
+
+    private string FormatUploadDate(DateTime uploadedAt)
+    {
+        var timeSpan = DateTime.UtcNow - uploadedAt;
+        
+        if (timeSpan.TotalDays >= 1)
+            return uploadedAt.ToString("MMM dd, yyyy");
+        else if (timeSpan.TotalHours >= 1)
+            return $"{(int)timeSpan.TotalHours} hours ago";
+        else if (timeSpan.TotalMinutes >= 1)
+            return $"{(int)timeSpan.TotalMinutes} minutes ago";
+        else
+            return "just now";
+    }
+}
+
+<style>
+    .document-viewer {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background-color: var(--bs-body-bg);
+        border: 1px solid var(--bs-border-color);
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+
+    .viewer-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        background-color: var(--bs-gray-50);
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+
+    .document-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .document-title {
+        color: var(--bs-body-color);
+        margin-bottom: 0.25rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 400px;
+    }
+
+    .document-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .document-meta .badge {
+        font-size: 0.75rem;
+    }
+
+    .document-meta .text-muted {
+        font-size: 0.875rem;
+    }
+
+    .viewer-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-left: 1rem;
+    }
+
+    .viewer-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 400px;
+    }
+
+    .loading-container,
+    .error-container,
+    .unsupported-preview {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .image-preview {
+        flex: 1;
+        padding: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--bs-gray-100);
+    }
+
+    .image-preview img {
+        max-width: 100%;
+        max-height: 70vh;
+        border-radius: 0.375rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .pdf-preview {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .pdf-frame {
+        flex: 1;
+        width: 100%;
+        min-height: 600px;
+        border: none;
+    }
+
+    .pdf-placeholder {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--bs-gray-50);
+    }
+
+    .processing-banner {
+        background-color: rgba(13, 110, 253, 0.1);
+        border-top: 1px solid var(--bs-primary);
+        padding: 0.75rem 1.25rem;
+    }
+
+    .bg-purple {
+        background-color: #6f42c1 !important;
+    }
+
+    @@media (max-width: 768px) {
+        .viewer-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .document-meta {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .viewer-actions {
+            margin-left: 0;
+            align-self: flex-end;
+        }
+
+        .document-title {
+            max-width: 100%;
+        }
+
+        .pdf-frame {
+            min-height: 400px;
+        }
+    }
+</style>

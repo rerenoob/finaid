@@ -82,7 +82,7 @@ public class FormRecognizerService : IOCRService
             // Process documents and extract fields
             foreach (var document in analyzedDocument.Documents)
             {
-                confidenceScores.Add(document.Confidence.GetValueOrDefault(0f));
+                confidenceScores.Add(document.Confidence);
                 
                 foreach (var field in document.Fields)
                 {
@@ -103,13 +103,13 @@ public class FormRecognizerService : IOCRService
                     {
                         FieldName = kvp.Key.Content ?? "unknown",
                         Value = kvp.Value.Content,
-                        Confidence = (decimal)kvp.Confidence.GetValueOrDefault(0f),
+                        Confidence = (decimal)kvp.Confidence,
                         DataType = DataTypes.Text,
-                        RequiresValidation = kvp.Confidence.GetValueOrDefault(0f) < _settings.ConfidenceThreshold
+                        RequiresValidation = kvp.Confidence < _settings.ConfidenceThreshold
                     };
                     
                     ocrResult.Fields.Add(field);
-                    confidenceScores.Add(kvp.Confidence.GetValueOrDefault(0f));
+                    confidenceScores.Add(kvp.Confidence);
                 }
             }
 
@@ -310,9 +310,9 @@ public class FormRecognizerService : IOCRService
         {
             FieldName = fieldName,
             Value = value,
-            Confidence = (decimal)documentField.Confidence.GetValueOrDefault(0f),
+            Confidence = (decimal)documentField.Confidence,
             DataType = dataType,
-            RequiresValidation = documentField.Confidence.GetValueOrDefault(0f) < _settings.ConfidenceThreshold
+            RequiresValidation = documentField.Confidence < _settings.ConfidenceThreshold
         };
     }
 

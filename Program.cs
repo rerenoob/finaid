@@ -150,6 +150,9 @@ builder.Services.AddScoped<finaid.Services.OCR.DocumentClassificationService>();
 // Add background OCR processing service
 builder.Services.AddHostedService<finaid.BackgroundServices.OCRProcessingService>();
 
+// Add Document UI services
+builder.Services.AddScoped<finaid.Services.Documents.IDocumentUIService, finaid.Services.Documents.DocumentUIService>();
+
 // Register appropriate API client based on configuration
 builder.Services.AddScoped<IFederalApiClient>(serviceProvider =>
 {
