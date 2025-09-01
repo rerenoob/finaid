@@ -166,7 +166,7 @@
                 PreviewUrl = await DocumentUIService.GetDocumentDownloadUrlAsync(Document.Id, TimeSpan.FromHours(1));
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             HasError = true;
             ErrorMessage = "Failed to load document preview. Please try downloading the document instead.";

@@ -212,11 +212,11 @@ public class FormRecognizerService : IOCRService
         return result.OverallConfidence;
     }
 
-    public async Task<ProcessingStatus> GetProcessingStatusAsync(Guid documentId, CancellationToken cancellationToken = default)
+    public Task<ProcessingStatus> GetProcessingStatusAsync(Guid documentId, CancellationToken cancellationToken = default)
     {
         // This would be retrieved from a processing status database/cache
         // For now, return pending as placeholder
-        return ProcessingStatus.Pending;
+        return Task.FromResult(ProcessingStatus.Pending);
     }
 
     public async Task<OCRResult> RetryProcessingAsync(Guid documentId, CancellationToken cancellationToken = default)
@@ -228,11 +228,11 @@ public class FormRecognizerService : IOCRService
         return await ProcessDocumentAsync(documentId, documentType, cancellationToken);
     }
 
-    public async Task<List<DocumentTemplate>> GetAvailableTemplatesAsync(CancellationToken cancellationToken = default)
+    public Task<List<DocumentTemplate>> GetAvailableTemplatesAsync(CancellationToken cancellationToken = default)
     {
         // This would typically come from a database or configuration
         // For now, return basic templates based on supported document types
-        return new List<DocumentTemplate>
+        return Task.FromResult(new List<DocumentTemplate>
         {
             new DocumentTemplate
             {
@@ -248,10 +248,10 @@ public class FormRecognizerService : IOCRService
                 Description = "IRS Form W-2 Wage and Tax Statement",
                 Fields = GetW2Fields()
             }
-        };
+        });
     }
 
-    public async Task<ValidationResult> ValidateExtractedDataAsync(OCRResult ocrResult, CancellationToken cancellationToken = default)
+    public Task<ValidationResult> ValidateExtractedDataAsync(OCRResult ocrResult, CancellationToken cancellationToken = default)
     {
         var validationResult = new ValidationResult { IsValid = true };
 
@@ -272,7 +272,7 @@ public class FormRecognizerService : IOCRService
             }
         }
 
-        return validationResult;
+        return Task.FromResult(validationResult);
     }
 
     private string GetModelForDocumentType(DocumentType documentType)
@@ -310,9 +310,9 @@ public class FormRecognizerService : IOCRService
         {
             FieldName = fieldName,
             Value = value,
-            Confidence = (decimal)documentField.Confidence,
+            Confidence = (decimal)(documentField.Confidence ?? 0),
             DataType = dataType,
-            RequiresValidation = documentField.Confidence < _settings.ConfidenceThreshold
+            RequiresValidation = (documentField.Confidence ?? 0) < _settings.ConfidenceThreshold
         };
     }
 

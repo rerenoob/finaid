@@ -115,18 +115,18 @@ public class DocumentUIService : IDocumentUIService
             .ToList();
     }
 
-    public async Task<List<DocumentMetadata>> GetUserDocumentsAsync(Guid userId)
+    public Task<List<DocumentMetadata>> GetUserDocumentsAsync(Guid userId)
     {
         try
         {
             // This would typically come from a service that queries the database
             // For now, return empty list - to be implemented with proper data access
-            return new List<DocumentMetadata>();
+            return Task.FromResult(new List<DocumentMetadata>());
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to retrieve user documents for {UserId}", userId);
-            return new List<DocumentMetadata>();
+            return Task.FromResult(new List<DocumentMetadata>());
         }
     }
 

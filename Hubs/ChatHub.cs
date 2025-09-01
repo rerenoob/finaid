@@ -91,7 +91,7 @@ public class ChatHub : Hub
                 if (!string.IsNullOrWhiteSpace(formContext))
                 {
                     var contextObject = JsonSerializer.Deserialize<object>(formContext);
-                    aiResponse = await _aiService.GetFormAssistanceAsync(message, contextObject);
+                    aiResponse = await _aiService.GetFormAssistanceAsync(message, contextObject!);
                 }
                 else
                 {

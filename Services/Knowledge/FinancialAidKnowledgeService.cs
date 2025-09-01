@@ -79,16 +79,16 @@ public class FinancialAidKnowledgeService : IKnowledgeService
         return null;
     }
 
-    public async Task<List<FinancialAidTerm>> SearchTermsAsync(string query, int maxResults = 10, CancellationToken cancellationToken = default)
+    public Task<List<FinancialAidTerm>> SearchTermsAsync(string query, int maxResults = 10, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(query))
-            return new List<FinancialAidTerm>();
+            return Task.FromResult(new List<FinancialAidTerm>());
 
         var cacheKey = $"search:{query.ToLowerInvariant()}:{maxResults}";
         
         if (_cache.TryGetValue(cacheKey, out List<FinancialAidTerm>? cachedResults))
         {
-            return cachedResults ?? new List<FinancialAidTerm>();
+            return Task.FromResult(cachedResults ?? new List<FinancialAidTerm>());
         }
 
         var normalizedQuery = query.ToLowerInvariant();
@@ -103,7 +103,7 @@ public class FinancialAidKnowledgeService : IKnowledgeService
             .ToList();
 
         _cache.Set(cacheKey, results, _cacheExpiration);
-        return results;
+        return Task.FromResult(results);
     }
 
     public async Task<ContextualHelp?> GetContextualHelpAsync(string context, string userProfile, CancellationToken cancellationToken = default)
@@ -185,16 +185,16 @@ public class FinancialAidKnowledgeService : IKnowledgeService
         }
     }
 
-    public async Task<List<string>> GetRelatedTermsAsync(string term, int maxResults = 5, CancellationToken cancellationToken = default)
+    public Task<List<string>> GetRelatedTermsAsync(string term, int maxResults = 5, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(term))
-            return new List<string>();
+            return Task.FromResult(new List<string>());
 
         var cacheKey = $"related:{term.ToLowerInvariant()}:{maxResults}";
         
         if (_cache.TryGetValue(cacheKey, out List<string>? cachedRelated))
         {
-            return cachedRelated ?? new List<string>();
+            return Task.FromResult(cachedRelated ?? new List<string>());
         }
 
         var normalizedTerm = term.ToLowerInvariant();
@@ -205,7 +205,7 @@ public class FinancialAidKnowledgeService : IKnowledgeService
             var termData = _termsDatabase[normalizedTerm];
             var related = termData.RelatedTerms.Take(maxResults).ToList();
             _cache.Set(cacheKey, related, _cacheExpiration);
-            return related;
+            return Task.FromResult(related);
         }
 
         // Find terms with similar categories or content
@@ -220,19 +220,19 @@ public class FinancialAidKnowledgeService : IKnowledgeService
             .ToList();
 
         _cache.Set(cacheKey, relatedTerms, _cacheExpiration);
-        return relatedTerms;
+        return Task.FromResult(relatedTerms);
     }
 
-    public async Task<List<FinancialAidTerm>> GetTermsByCategoryAsync(string category, CancellationToken cancellationToken = default)
+    public Task<List<FinancialAidTerm>> GetTermsByCategoryAsync(string category, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(category))
-            return new List<FinancialAidTerm>();
+            return Task.FromResult(new List<FinancialAidTerm>());
 
         var cacheKey = $"category:{category.ToLowerInvariant()}";
         
         if (_cache.TryGetValue(cacheKey, out List<FinancialAidTerm>? cachedTerms))
         {
-            return cachedTerms ?? new List<FinancialAidTerm>();
+            return Task.FromResult(cachedTerms ?? new List<FinancialAidTerm>());
         }
 
         var categoryTerms = _termsDatabase.Values
@@ -241,19 +241,19 @@ public class FinancialAidKnowledgeService : IKnowledgeService
             .ToList();
 
         _cache.Set(cacheKey, categoryTerms, _cacheExpiration);
-        return categoryTerms;
+        return Task.FromResult(categoryTerms);
     }
 
-    public async Task<List<FrequentlyAskedQuestion>> GetFrequentlyAskedQuestionsAsync(string topic, int maxResults = 5, CancellationToken cancellationToken = default)
+    public Task<List<FrequentlyAskedQuestion>> GetFrequentlyAskedQuestionsAsync(string topic, int maxResults = 5, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(topic))
-            return new List<FrequentlyAskedQuestion>();
+            return Task.FromResult(new List<FrequentlyAskedQuestion>());
 
         var cacheKey = $"faq:{topic.ToLowerInvariant()}:{maxResults}";
         
         if (_cache.TryGetValue(cacheKey, out List<FrequentlyAskedQuestion>? cachedFaqs))
         {
-            return cachedFaqs ?? new List<FrequentlyAskedQuestion>();
+            return Task.FromResult(cachedFaqs ?? new List<FrequentlyAskedQuestion>());
         }
 
         var normalizedTopic = topic.ToLowerInvariant();
@@ -280,13 +280,13 @@ public class FinancialAidKnowledgeService : IKnowledgeService
 
         var result = relevantFaqs.Take(maxResults).ToList();
         _cache.Set(cacheKey, result, _cacheExpiration);
-        return result;
+        return Task.FromResult(result);
     }
 
-    public async Task<bool> AddOrUpdateTermAsync(FinancialAidTerm term, CancellationToken cancellationToken = default)
+    public Task<bool> AddOrUpdateTermAsync(FinancialAidTerm term, CancellationToken cancellationToken = default)
     {
         if (term == null || string.IsNullOrWhiteSpace(term.Term))
-            return false;
+            return Task.FromResult(false);
 
         try
         {
@@ -299,12 +299,12 @@ public class FinancialAidKnowledgeService : IKnowledgeService
                 ?.GetValue(_cache);
             
             _logger.LogInformation("Added/updated term: {Term}", term.Term);
-            return true;
+            return Task.FromResult(true);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to add/update term: {Term}", term.Term);
-            return false;
+            return Task.FromResult(false);
         }
     }
 
