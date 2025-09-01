@@ -1,0 +1,303 @@
+@using finaid.Models.Dashboard
+@using finaid.Models.User
+@using finaid.Components.Dashboard
+@using finaid.Components.Shared
+
+<div class="dashboard-layout">
+    <!-- Welcome Section -->
+    <div class="welcome-section">
+        <h1 class="welcome-title">
+            Welcome, @CurrentUser.FirstName!
+        </h1>
+        <p class="welcome-subtitle">
+            Here's your financial aid application progress
+        </p>
+        <div class="welcome-actions">
+            <button class="btn btn-outline-secondary btn-sm" @onclick="OnRefresh">
+                <i class="bi bi-arrow-clockwise me-1"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Grid -->
+    <div class="dashboard-grid">
+        <!-- Left Column - Main Content -->
+        <div class="main-content">
+            <!-- Application Progress Card -->
+            <DashboardCard Title="Application Progress" Icon="bi-graph-up" IsLoading="@IsLoadingApplications">
+                @if (DashboardData?.Applications?.Any() == true)
+                {
+                    <div class="applications-container">
+                        @foreach (var app in DashboardData.Applications)
+                        {
+                            <div class="application-item">
+                                <div class="application-header">
+                                    <h6 class="application-title">@app.Title</h6>
+                                    <span class="application-type badge bg-secondary">@app.ApplicationType</span>
+                                </div>
+                                
+                                <div class="progress-container">
+                                    <ProgressBar Value="@app.OverallCompletion" 
+                                               ShowPercentage="true" 
+                                               Title="@app.Title" 
+                                               SubText="@app.NextStepDescription"
+                                               Theme="ProgressBar.ProgressTheme.Auto" />
+                                </div>
+                                
+                                <div class="application-footer">
+                                    <span class="last-updated">
+                                        <i class="bi bi-clock me-1"></i>
+                                        Updated @GetRelativeTime(app.LastUpdated)
+                                    </span>
+                                    
+                                    @if (app.HasBlockingIssues)
+                                    {
+                                        <span class="blocking-issues text-danger">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>
+                                            @app.BlockingIssueCount issue(s) need attention
+                                        </span>
+                                    }
+                                    
+                                    @if (app.NextDeadline.HasValue)
+                                    {
+                                        <span class="next-deadline text-muted">
+                                            <i class="bi bi-calendar me-1"></i>
+                                            Due @app.NextDeadline.Value.ToString("MMM dd")
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="no-applications">
+                        <i class="bi bi-file-earmark-plus display-6 text-muted"></i>
+                        <h6 class="mt-2">No Applications Started</h6>
+                        <p class="text-muted">Get started with your financial aid journey</p>
+                        <a href="/fafsa" class="btn btn-primary btn-sm">
+                            Start FAFSA Application
+                        </a>
+                    </div>
+                }
+            </DashboardCard>
+
+            <!-- Upcoming Deadlines Card -->
+            <DashboardCard Title="Upcoming Deadlines" Icon="bi-calendar-event" IsLoading="@IsLoadingDeadlines">
+                <DeadlineList Deadlines="@DashboardData?.UpcomingDeadlines" />
+            </DashboardCard>
+
+            <!-- Recent Activity Card -->
+            <DashboardCard Title="Recent Activity" Icon="bi-clock-history" IsLoading="@IsLoadingActivities">
+                <ActivityFeed Activities="@DashboardData?.RecentActivities" />
+            </DashboardCard>
+        </div>
+
+        <!-- Right Column - Sidebar -->
+        <div class="sidebar-content">
+            <!-- Quick Actions Card -->
+            <DashboardCard Title="Quick Actions" Icon="bi-lightning" IsLoading="@IsLoadingQuickActions">
+                <QuickActions Actions="@DashboardData?.QuickActions?.Actions" />
+            </DashboardCard>
+
+            <!-- Notifications Card -->
+            <DashboardCard Title="Notifications" Icon="bi-bell" IsLoading="@IsLoadingNotifications">
+                <NotificationCenter Notifications="@DashboardData?.Notifications" />
+            </DashboardCard>
+
+            <!-- Connection Status -->
+            <RealTimeConnectionStatus />
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public DashboardViewModel? DashboardData { get; set; }
+    [Parameter] public User CurrentUser { get; set; } = new();
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter] public bool IsLoadingApplications { get; set; }
+    [Parameter] public bool IsLoadingDeadlines { get; set; }
+    [Parameter] public bool IsLoadingActivities { get; set; }
+    [Parameter] public bool IsLoadingNotifications { get; set; }
+    [Parameter] public bool IsLoadingQuickActions { get; set; }
+
+    private string GetRelativeTime(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+        
+        return timeSpan switch
+        {
+            { TotalHours: < 1 } => "less than an hour ago",
+            { TotalDays: < 1 } => $"{(int)timeSpan.TotalHours} hours ago",
+            { TotalDays: < 7 } => $"{(int)timeSpan.TotalDays} days ago",
+            { TotalDays: < 30 } => $"{(int)(timeSpan.TotalDays / 7)} weeks ago",
+            _ => dateTime.ToString("MMM dd, yyyy")
+        };
+    }
+}
+
+<style>
+    .dashboard-layout {
+        padding: 2rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .welcome-section {
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 1rem;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .welcome-title {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .welcome-subtitle {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        margin-bottom: 1rem;
+    }
+
+    .welcome-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: 2rem;
+        align-items: start;
+    }
+
+    .main-content {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .sidebar-content {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        position: sticky;
+        top: 2rem;
+    }
+
+    .applications-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .application-item {
+        padding: 1rem;
+        border: 1px solid #e9ecef;
+        border-radius: 0.5rem;
+        background-color: #fff;
+    }
+
+    .application-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .application-title {
+        margin-bottom: 0;
+        font-weight: 600;
+        color: #495057;
+        flex-grow: 1;
+        margin-right: 0.5rem;
+    }
+
+    .progress-container {
+        margin-bottom: 1rem;
+    }
+
+    .application-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.875rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .no-applications {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #6c757d;
+    }
+
+    /* Responsive Design */
+    @@media (max-width: 1200px) {
+        .dashboard-grid {
+            grid-template-columns: 1fr 350px;
+            gap: 1.5rem;
+        }
+    }
+
+    @@media (max-width: 992px) {
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .sidebar-content {
+            position: static;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .dashboard-layout {
+            padding: 1rem;
+        }
+
+        .welcome-section {
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .welcome-title {
+            font-size: 1.5rem;
+        }
+
+        .application-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .application-footer {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+    }
+
+    /* Loading states */
+    .loading-placeholder {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+        border-radius: 0.25rem;
+        height: 20px;
+        margin-bottom: 0.5rem;
+    }
+
+    @@keyframes loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+</style>
