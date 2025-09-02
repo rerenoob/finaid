@@ -59,6 +59,17 @@
         padding-bottom: 1rem;
     }
 
+.nav-section-header {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.nav-section-header:first-of-type {
+    border-top: none;
+    margin-top: 0;
+}
+
     .nav-item ::deep .nav-link {
         color: #d7d7d7;
         background: none;
