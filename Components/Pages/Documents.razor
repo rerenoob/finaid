@@ -1,0 +1,80 @@
+@page "/documents"
+@using finaid.Components.Documents
+@using finaid.Models.User
+@using finaid.Services
+@inject finaid.Services.AppStateService AppState
+
+<PageTitle>Documents - FinAid Assistant</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header mb-4">
+                <h1 class="display-6 mb-2">
+                    <i class="bi bi-folder2-open me-2"></i>
+                    Document Management
+                </h1>
+                <p class="lead text-muted">
+                    Upload and manage your financial aid documents securely
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <DocumentUpload UserId="@currentUser.Id" />
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Document Requirements
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Required Documents:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="bi bi-check-circle text-success me-2"></i>Tax Returns (1040 forms)</li>
+                                <li><i class="bi bi-check-circle text-success me-2"></i>W-2 Forms</li>
+                                <li><i class="bi bi-check-circle text-success me-2"></i>Bank Statements</li>
+                                <li><i class="bi bi-check-circle text-success me-2"></i>Investment Statements</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Supported Formats:</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="bi bi-filetype-pdf text-danger me-2"></i>PDF documents</li>
+                                <li><i class="bi bi-file-image text-primary me-2"></i>JPG/JPEG images</li>
+                                <li><i class="bi bi-file-image text-primary me-2"></i>PNG images</li>
+                                <li><i class="bi bi-file-image text-primary me-2"></i>TIFF images</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private User currentUser = new() 
+    { 
+        Id = Guid.NewGuid(),
+        FirstName = "Test", 
+        LastName = "User", 
+        Email = "test.user@example.com" 
+    };
+
+    protected override void OnInitialized()
+    {
+        // Get current user from app state (mock data for now)
+        currentUser = AppState.GetValue<User>(AppStateKeys.CurrentUser, currentUser);
+    }
+}
