@@ -192,11 +192,13 @@
     private bool showSectionHelp = false;
     private bool isLoadingHelp = false;
     private double completionPercentage = 0;
+    private bool isInitialized = false;
 
     protected override async Task OnParametersSetAsync()
     {
-        if (EnableAIAssistance && !string.IsNullOrEmpty(SectionId))
+        if (EnableAIAssistance && !string.IsNullOrEmpty(SectionId) && !isInitialized)
         {
+            isInitialized = true;
             await UpdateSectionProgressAsync();
         }
     }

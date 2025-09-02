@@ -94,8 +94,31 @@ builder.Services.AddScoped<IFAFSASubmissionService, FAFSASubmissionService>();
 builder.Services.AddHostedService<SubmissionStatusUpdateService>();
 
 // Add AI services (required for form assistance)
-builder.Services.AddScoped<IAIAssistantService, AzureOpenAIService>();
 builder.Services.AddScoped<IKnowledgeService, FinancialAidKnowledgeService>();
+
+// Add mock AI service for development
+builder.Services.AddScoped<finaid.Services.AI.MockAIAssistantService>();
+
+// Register appropriate AI client based on configuration
+builder.Services.AddScoped<IAIAssistantService>(serviceProvider =>
+{
+    var configuration = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<AzureOpenAISettings>>();
+    var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+    
+    // Check if Azure OpenAI is properly configured
+    var settings = configuration.Value;
+    if (string.IsNullOrWhiteSpace(settings.Endpoint) || 
+        settings.Endpoint.Contains("your-openai-resource") ||
+        string.IsNullOrWhiteSpace(settings.ApiKey) || 
+        settings.ApiKey.Contains("your-api-key") ||
+        string.IsNullOrWhiteSpace(settings.DeploymentName))
+    {
+        logger.LogWarning("Azure OpenAI not properly configured, using mock service for development");
+        return serviceProvider.GetRequiredService<finaid.Services.AI.MockAIAssistantService>();
+    }
+    
+    return new AzureOpenAIService(configuration, serviceProvider.GetRequiredService<ILogger<AzureOpenAIService>>());
+});
 
 // Add Form services
 builder.Services.AddScoped<IFormAssistanceService, FormAssistanceService>();
