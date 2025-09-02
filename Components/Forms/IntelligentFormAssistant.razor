@@ -256,6 +256,7 @@
     private void ToggleAIPanel()
     {
         showAIPanel = !showAIPanel;
+        StateHasChanged();
     }
 
     private async Task GenerateFormReviewAsync()
