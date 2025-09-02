@@ -1,0 +1,268 @@
+@page "/ai-assistant"
+@using finaid.Models.AI
+@using finaid.Models.Chat
+@using finaid.Components.Chat
+@inject IServiceProvider ServiceProvider
+@inject ILogger<FAFSAAi> Logger
+
+<PageTitle>AI Assistant - FinAid</PageTitle>
+
+<div class="ai-assistant-page">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <div class="page-header mb-4">
+                    <h1 class="h2 text-primary">
+                        <i class="bi bi-robot me-2"></i>
+                        AI Assistant
+                    </h1>
+                    <p class="lead text-muted">
+                        Get instant help with your FAFSA application, financial aid questions, and document requirements.
+                        Your AI assistant is here to guide you through every step of the process.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="chat-wrapper">
+                    <ChatInterface SessionId="@_sessionId"
+                                   UserId="@_userId"
+                                   SessionType="fafsa"
+                                   Title="FAFSA AI Assistant"
+                                   InputPlaceholder="Ask me anything about financial aid, FAFSA, or your application..."
+                                   AllowNewChat="true"
+                                   AllowClear="true"
+                                   ShowConnectionStatus="true"
+                                   ShowFormContextToggle="true"
+                                   AutoScroll="true"
+                                   EnableStreaming="true"
+                                   OnSessionCreated="HandleSessionCreated"
+                                   OnSessionCleared="HandleSessionCleared"
+                                   OnMessageReceived="HandleMessageReceived"
+                                   FormContext="@_currentFormContext" />
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="assistant-sidebar">
+                    <!-- Quick Help Section -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-lightbulb me-2"></i>
+                                Quick Help Topics
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="quick-help-buttons">
+                                @foreach (var topic in QuickHelpTopics)
+                                {
+                                    <button class="btn btn-outline-primary btn-sm mb-2 w-100"
+                                            @onclick="() => AskQuickQuestion(topic.Question)">
+                                        <i class="bi bi-@topic.Icon me-2"></i>
+                                        @topic.Title
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Application Context -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-info-circle me-2"></i>
+                                Application Context
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="context-info">
+                                <div class="context-item">
+                                    <small class="text-muted">Session Type:</small>
+                                    <div class="fw-semibold">FAFSA Assistance</div>
+                                </div>
+                                <div class="context-item">
+                                    <small class="text-muted">Current Session:</small>
+                                    <div class="fw-semibold">@(_sessionId?[..8] ?? "New Session")</div>
+                                </div>
+                                <div class="context-item">
+                                    <small class="text-muted">Messages:</small>
+                                    <div class="fw-semibold">@_messageCount</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tips & Guidelines -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                Tips for Better Assistance
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled mb-0">
+                                <li class="mb-2">
+                                    <i class="bi bi-check-circle text-success me-2"></i>
+                                    <small>Be specific about your questions</small>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-check-circle text-success me-2"></i>
+                                    <small>Include relevant details about your situation</small>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-check-circle text-success me-2"></i>
+                                    <small>Use "Include form context" for form-related questions</small>
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-check-circle text-success me-2"></i>
+                                    <small>Ask follow-up questions if you need clarification</small>
+                                </li>
+                                <li>
+                                    <i class="bi bi-shield-check text-info me-2"></i>
+                                    <small>Your conversations are secure and private</small>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? _sessionId;
+    private string _userId = Guid.NewGuid().ToString(); // In real app, get from authentication
+    private object? _currentFormContext;
+    private int _messageCount = 0;
+
+    // Quick help topics for the sidebar
+    private readonly List<QuickHelpTopic> QuickHelpTopics = new()
+    {
+        new("Getting Started", "How do I start my FAFSA application?", "play-circle"),
+        new("Required Documents", "What documents do I need for FAFSA?", "file-earmark-text"),
+        new("Dependency Status", "Am I a dependent or independent student?", "people"),
+        new("Income Information", "How do I report my family's income?", "currency-dollar"),
+        new("School Selection", "How many schools should I add to FAFSA?", "building"),
+        new("Deadlines", "What are the FAFSA deadlines?", "calendar-event"),
+        new("Financial Aid Types", "What types of aid can I receive?", "award"),
+        new("Verification Process", "What is FAFSA verification?", "check-circle"),
+        new("EFC Explanation", "What is Expected Family Contribution?", "calculator"),
+        new("Common Mistakes", "How do I avoid common FAFSA errors?", "exclamation-triangle")
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Initialize new session
+            _sessionId = Guid.NewGuid().ToString();
+            
+            // In a real application, you would:
+            // 1. Get the actual user ID from authentication
+            // 2. Load any existing session or form context
+            // 3. Initialize form context from current FAFSA progress
+            
+            Logger.LogInformation("AI Assistant page initialized with session {SessionId}", _sessionId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error initializing AI Assistant page");
+        }
+    }
+
+    private async Task HandleSessionCreated(ConversationSession session)
+    {
+        _sessionId = session.Id.ToString();
+        _messageCount = 0;
+        Logger.LogInformation("New chat session created: {SessionId}", _sessionId);
+        StateHasChanged();
+    }
+
+    private async Task HandleSessionCleared(string sessionId)
+    {
+        _messageCount = 0;
+        Logger.LogInformation("Chat session cleared: {SessionId}", sessionId);
+        StateHasChanged();
+    }
+
+    private async Task HandleMessageReceived(ChatMessage message)
+    {
+        _messageCount++;
+        Logger.LogDebug("Message received in session {SessionId}: {Role} - {ContentLength} chars", 
+            _sessionId, message.Role, message.Content.Length);
+        StateHasChanged();
+    }
+
+    private async Task AskQuickQuestion(string question)
+    {
+        try
+        {
+            // This would trigger the chat interface to send the question
+            // For now, we'll just log it. In a full implementation,
+            // you would need to expose a method on ChatInterface to send messages programmatically
+            Logger.LogInformation("Quick question selected: {Question}", question);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error asking quick question: {Question}", question);
+        }
+    }
+
+    private record QuickHelpTopic(string Title, string Question, string Icon);
+}
+
+<style>
+    .ai-assistant-page {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .page-header {
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 1rem;
+    }
+
+    .chat-wrapper {
+        height: calc(100vh - 200px);
+        min-height: 500px;
+    }
+
+    .assistant-sidebar .card {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border: 1px solid #e9ecef;
+    }
+
+    .assistant-sidebar .card-header {
+        background: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .quick-help-buttons .btn {
+        text-align: left;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+    }
+
+    .quick-help-buttons .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,123,255,0.2);
+    }
+
+    .context-info .context-item {
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .context-info .context-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+
+    /* Responsive adjustments would go in a separate CSS file */
+</style>

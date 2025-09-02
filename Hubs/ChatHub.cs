@@ -241,7 +241,34 @@ public class ChatHub : Hub
             }
             else
             {
-                await Clients.Caller.SendAsync("Error", "Session not found");
+                // Session doesn't exist, create a new one
+                _logger.LogInformation("Session {SessionId} not found, creating new session", sessionId);
+                
+                // Create a new session with the requested ID
+                // In real app, get user info from context
+                ConversationSession newSession;
+                
+                // Check if the mock service has the CreateSessionWithIdAsync method
+                if (_contextService is finaid.Services.AI.MockConversationContextService mockService)
+                {
+                    newSession = await mockService.CreateSessionWithIdAsync(
+                        sessionGuid,
+                        Guid.NewGuid(), // Default user ID - should come from auth context  
+                        "general", // Default session type
+                        CancellationToken.None);
+                }
+                else
+                {
+                    // For production service, create normally and handle ID mismatch
+                    newSession = await _contextService.CreateSessionAsync(
+                        Guid.NewGuid(), // Default user ID - should come from auth context
+                        "general", // Default session type
+                        CancellationToken.None);
+                }
+                
+                // Return empty messages for new session
+                await Clients.Caller.SendAsync("SessionHistory", newSession.Messages);
+                await Clients.Caller.SendAsync("SessionCreated", newSession);
             }
         }
         catch (Exception ex)

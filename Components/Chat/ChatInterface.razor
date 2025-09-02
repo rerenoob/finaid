@@ -4,6 +4,7 @@
 @using System.Text.Json
 @inject IJSRuntime JSRuntime
 @inject ILogger<ChatInterface> Logger
+@inject NavigationManager NavigationManager
 @implements IAsyncDisposable
 
 <div class="chat-container" id="chat-container-@ComponentId">
@@ -166,8 +167,12 @@
     {
         try
         {
+            // Construct the absolute URL for the SignalR hub
+            var hubUrl = NavigationManager.ToAbsoluteUri("/hubs/chat");
+            Logger.LogInformation("Connecting to SignalR hub at: {HubUrl}", hubUrl);
+            
             _hubConnection = new HubConnectionBuilder()
-                .WithUrl("/hubs/chat")
+                .WithUrl(hubUrl)
                 .WithAutomaticReconnect()
                 .Build();
 
@@ -182,6 +187,7 @@
             _hubConnection.On<string>("AIStreamingError", HandleStreamingError);
             _hubConnection.On<string>("Error", HandleError);
             _hubConnection.On<List<finaid.Models.AI.ChatMessage>>("SessionHistory", HandleSessionHistory);
+            _hubConnection.On<ConversationSession>("SessionCreated", HandleSessionCreatedFromHub);
 
             _hubConnection.Reconnecting += OnReconnecting;
             _hubConnection.Reconnected += OnReconnected;
@@ -369,6 +375,25 @@
         
         StateHasChanged();
         return Task.CompletedTask;
+    }
+
+    private async Task HandleSessionCreatedFromHub(ConversationSession session)
+    {
+        Logger.LogInformation("Session created from hub: {SessionId}", session.Id);
+        
+        // Update the session ID if it's different
+        if (SessionId != session.Id.ToString())
+        {
+            Logger.LogInformation("Updating session ID from {OldSessionId} to {NewSessionId}", SessionId, session.Id);
+        }
+        
+        // Notify parent component
+        if (OnSessionCreated.HasDelegate)
+        {
+            await OnSessionCreated.InvokeAsync(session);
+        }
+        
+        StateHasChanged();
     }
 
     private async Task HandleSessionHistory(List<finaid.Models.AI.ChatMessage> history)

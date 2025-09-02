@@ -196,6 +196,10 @@ builder.Services.AddScoped<IFederalApiClient>(serviceProvider =>
     return serviceProvider.GetRequiredService<FederalApiClientService>();
 });
 
+// Add conversation context service with fallback implementation
+// For development, we'll create a mock service that doesn't require Redis
+builder.Services.AddScoped<finaid.Services.AI.IConversationContextService, finaid.Services.AI.MockConversationContextService>();
+
 // Add SignalR for real-time updates
 builder.Services.AddSignalR();
 
@@ -219,6 +223,9 @@ app.UseAuthorization();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+// Map SignalR hubs
+app.MapHub<finaid.Hubs.ChatHub>("/hubs/chat");
 
 // Initialize database and seed development data
 await app.InitializeDatabaseAsync();
