@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Aid Assistant - UI Mockup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .tab-active {
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+        }
+        .chat-bubble-user {
+            background-color: #dbeafe;
+            align-self: flex-end;
+        }
+        .chat-bubble-ai {
+            background-color: #f3f4f6;
+            align-self: flex-start;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+
+        <header class="flex justify-between items-center mb-8 pb-4 border-b">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-500 text-white p-2 rounded-lg">
+                    <i class="fas fa-graduation-cap fa-2x"></i>
+                </div>
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Financial Aid Assistant</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-sm hidden md:block">Welcome, Emily!</span>
+                <img src="https://placehold.co/40x40/e0e0e0/333?text=E" class="rounded-full">
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- Screen will be rendered here by JS -->
+        </main>
+
+    </div>
+
+    <script>
+        const screens = {
+            onboarding: `
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-md max-w-3xl mx-auto animate-fade-in">
+                    <h2 class="text-2xl font-bold mb-2 text-center">Let's get your financial aid journey started!</h2>
+                    <p class="text-gray-600 mb-6 text-center">Our AI assistant will ask a few simple questions to build your profile.</p>
+
+                    <!-- Chat Interface -->
+                    <div class="h-96 bg-gray-50 rounded-lg p-4 flex flex-col gap-4 overflow-y-auto mb-4 border">
+                        <div class="chat-bubble-ai p-3 rounded-lg max-w-md">
+                            <p class="font-semibold text-sm text-blue-600">FinBot</p>
+                            <p>Hi there! I'm FinBot. To get started, what's your full legal name?</p>
+                        </div>
+                        <div class="chat-bubble-user p-3 rounded-lg max-w-md">
+                            <p class="font-semibold text-sm text-gray-700">You</p>
+                            <p>Emily Carter</p>
+                        </div>
+                         <div class="chat-bubble-ai p-3 rounded-lg max-w-md">
+                            <p class="font-semibold text-sm text-blue-600">FinBot</p>
+                            <p>Great, Emily! And what's your date of birth?</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Chat Input -->
+                    <div class="flex gap-2">
+                        <input type="text" placeholder="Type your answer here..." class="flex-grow p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" value="08/15/2007">
+                        <button onclick="navigateTo('dashboard')" class="bg-blue-500 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>`,
+            dashboard: `
+                <div>
+                    <h2 class="text-3xl font-bold mb-6">Your Dashboard</h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        
+                        <!-- Left Column: To-Do List -->
+                        <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-md">
+                            <h3 class="text-xl font-bold mb-4">Your Action Plan</h3>
+                            <div class="space-y-4">
+                                <!-- FAFSA Task -->
+                                <div class="flex items-center gap-4 p-4 border rounded-lg bg-blue-50 border-blue-200">
+                                    <i class="fas fa-flag-usa fa-2x text-blue-500"></i>
+                                    <div class="flex-grow">
+                                        <h4 class="font-bold">Complete Your FAFSA</h4>
+                                        <p class="text-sm text-gray-600">The first step for federal aid. Let's get it done!</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-sm font-semibold text-red-600">Due: Oct 1, 2025</p>
+                                        <button onclick="navigateTo('application')" class="mt-1 bg-blue-500 text-white text-sm font-semibold px-4 py-1.5 rounded-md hover:bg-blue-600">Start Now</button>
+                                    </div>
+                                </div>
+                                <!-- State Grant Task -->
+                                <div class="flex items-center gap-4 p-4 border rounded-lg">
+                                    <i class="fas fa-landmark fa-2x text-gray-400"></i>
+                                    <div class="flex-grow">
+                                        <h4 class="font-bold text-gray-500">Apply for State Grant</h4>
+                                        <p class="text-sm text-gray-500">Locked until FAFSA is complete.</p>
+                                    </div>
+                                    <div class="text-right">
+                                         <p class="text-sm font-semibold text-gray-500">Due: Mar 1, 2026</p>
+                                    </div>
+                                </div>
+                                <!-- Document Upload Task -->
+                                 <div class="flex items-center gap-4 p-4 border rounded-lg">
+                                    <i class="fas fa-file-upload fa-2x text-gray-400"></i>
+                                    <div class="flex-grow">
+                                        <h4 class="font-bold">Upload 2024 Tax Documents</h4>
+                                        <p class="text-sm text-gray-600">Securely upload your parents' tax information.</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-sm font-semibold text-red-600">Due: Oct 15, 2025</p>
+                                        <button class="mt-1 bg-gray-200 text-gray-700 text-sm font-semibold px-4 py-1.5 rounded-md hover:bg-gray-300">Upload</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Scholarships -->
+                        <div class="bg-white p-6 rounded-xl shadow-md">
+                            <h3 class="text-xl font-bold mb-4">Scholarship Matches</h3>
+                            <div class="space-y-3">
+                                <div class="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <p class="font-semibold">First-Generation Leaders Grant</p>
+                                    <p class="text-sm text-green-600">$5,000 Award</p>
+                                </div>
+                                 <div class="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <p class="font-semibold">Rural Students in STEM Scholarship</p>
+                                    <p class="text-sm text-green-600">$10,000 Award</p>
+                                </div>
+                                 <div class="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <p class="font-semibold">Community Volunteer Award</p>
+                                    <p class="text-sm text-green-600">$2,500 Award</p>
+                                </div>
+                                <button class="w-full mt-2 text-blue-600 font-semibold hover:underline">View All Matches</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+            application: `
+                 <div class="bg-white p-6 md:p-8 rounded-xl shadow-md">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 class="text-3xl font-bold">2025-2026 FAFSA Application</h2>
+                            <p class="text-gray-600">We've pre-filled what we can. Please review and complete the rest.</p>
+                        </div>
+                        <button onclick="navigateTo('dashboard')" class="text-gray-500 hover:text-gray-800"><i class="fas fa-times fa-lg"></i></button>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="mb-6">
+                        <div class="relative pt-1">
+                            <div class="flex mb-2 items-center justify-between">
+                                <div><span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200">35% Complete</span></div>
+                            </div>
+                            <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200">
+                                <div style="width:35%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Section -->
+                    <form class="space-y-6">
+                        <fieldset class="border p-4 rounded-lg">
+                            <legend class="px-2 font-bold text-lg">Student Information</legend>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Full Name</label>
+                                    <input type="text" value="Emily Carter" class="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-gray-100" readonly>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Date of Birth</label>
+                                    <input type="text" value="08/15/2007" class="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-gray-100" readonly>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Social Security Number</label>
+                                    <input type="text" placeholder="***-**-****" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">
+                                </div>
+                                 <div>
+                                    <label class="block text-sm font-medium text-gray-700">Email Address</label>
+                                    <input type="email" value="emily.c@email.com" class="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-gray-100" readonly>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                         <fieldset class="border p-4 rounded-lg">
+                            <legend class="px-2 font-bold text-lg">Parental Information</legend>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Parent 1: Full Name</label>
+                                    <input type="text" placeholder="Enter full name" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Parent 1: 2024 AGI</label>
+                                    <input type="text" placeholder="Adjusted Gross Income" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">
+                                    <p class="text-xs text-blue-600 mt-1">Need help finding this? <a href="#" class="underline">Click here.</a></p>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <div class="flex justify-end gap-4 pt-4">
+                            <button type="button" class="bg-gray-200 text-gray-800 font-semibold px-6 py-2 rounded-lg hover:bg-gray-300">Save & Exit</button>
+                            <button type="submit" onclick="event.preventDefault(); navigateTo('award');" class="bg-blue-500 text-white font-semibold px-6 py-2 rounded-lg hover:bg-blue-600">Review & Submit</button>
+                        </div>
+                    </form>
+                 </div>
+            `,
+            award: `
+                 <div class="bg-white p-6 md:p-8 rounded-xl shadow-md">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 class="text-3xl font-bold">Compare Your Aid Offers</h2>
+                            <p class="text-gray-600">Here's a breakdown of your estimated awards. More will appear as they come in.</p>
+                        </div>
+                         <button onclick="navigateTo('dashboard')" class="bg-blue-500 text-white font-semibold px-6 py-2 rounded-lg hover:bg-blue-600">Back to Dashboard</button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="p-4 font-bold uppercase text-gray-600 text-sm border-b">Institution</th>
+                                    <th class="p-4 font-bold uppercase text-gray-600 text-sm border-b">Grants & Scholarships</th>
+                                    <th class="p-4 font-bold uppercase text-gray-600 text-sm border-b">Federal Loans</th>
+                                    <th class="p-4 font-bold uppercase text-gray-600 text-sm border-b">Work-Study</th>
+                                    <th class="p-4 font-bold uppercase text-gray-600 text-sm border-b">Total Aid</th>
+                                    <th class="p-4 font-bold uppercase text-gray-600 text-sm border-b">Net Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="p-4 border-b font-semibold">State University</td>
+                                    <td class="p-4 border-b text-green-600">$12,500</td>
+                                    <td class="p-4 border-b">$5,500</td>
+                                    <td class="p-4 border-b">$3,000</td>
+                                    <td class="p-4 border-b font-semibold">$21,000</td>
+                                    <td class="p-4 border-b font-bold text-blue-600">$4,000 / year</td>
+                                </tr>
+                                 <tr class="hover:bg-gray-50">
+                                    <td class="p-4 border-b font-semibold">Private College</td>
+                                    <td class="p-4 border-b text-green-600">$35,000</td>
+                                    <td class="p-4 border-b">$5,500</td>
+                                    <td class="p-4 border-b">$2,500</td>
+                                    <td class="p-4 border-b font-semibold">$43,000</td>
+                                    <td class="p-4 border-b font-bold text-blue-600">$12,000 / year</td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="p-4 border-b font-semibold">Community College</td>
+                                    <td class="p-4 border-b text-green-600">$6,000</td>
+                                    <td class="p-4 border-b">$2,000</td>
+                                    <td class="p-4 border-b">$0</td>
+                                    <td class="p-4 border-b font-semibold">$8,000</td>
+                                    <td class="p-4 border-b font-bold text-blue-600">$500 / year</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                 </div>`
+        };
+
+        const mainContent = document.getElementById('main-content');
+
+        function navigateTo(screenName) {
+            if (screens[screenName]) {
+                mainContent.innerHTML = screens[screenName];
+            }
+        }
+
+        // Initial load
+        window.onload = () => {
+            // Start with onboarding, but you can change this for testing
+            navigateTo('onboarding'); 
+        };
+    </script>
+</body>
+</html>
