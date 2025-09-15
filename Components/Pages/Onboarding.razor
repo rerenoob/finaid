@@ -1,0 +1,100 @@
+@page "/onboarding"
+@using Microsoft.AspNetCore.Components
+@inject NavigationManager Navigation
+
+<PageTitle>Get Started - Financial Aid Assistant</PageTitle>
+
+<div class="bg-white p-6 md:p-8 rounded-xl shadow-md max-w-3xl mx-auto animate-fade-in">
+    <h2 class="text-2xl font-bold mb-2 text-center">Let's get your financial aid journey started!</h2>
+    <p class="text-gray-600 mb-6 text-center">Our AI assistant will ask a few simple questions to build your profile.</p>
+
+    <!-- Chat Interface -->
+    <div class="h-96 bg-gray-50 rounded-lg p-4 flex flex-col gap-4 overflow-y-auto mb-4 border" id="chat-container">
+        @foreach (var message in ChatMessages)
+        {
+            <div class="@GetMessageClass(message.IsUser) p-3 rounded-lg max-w-md">
+                <p class="font-semibold text-sm @GetSenderClass(message.IsUser)">@(message.IsUser ? "You" : "FinBot")</p>
+                <p>@message.Text</p>
+            </div>
+        }
+    </div>
+    
+    <!-- Chat Input -->
+    <div class="flex gap-2">
+        <input type="text" @bind="CurrentInput" @onkeypress="HandleKeyPress" 
+               placeholder="Type your answer here..." 
+               class="flex-grow p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        <button @onclick="SendMessage" 
+                class="bg-blue-500 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
+
+@code {
+    private string CurrentInput = "";
+    private List<ChatMessage> ChatMessages = new();
+    private int CurrentStep = 0;
+
+    protected override void OnInitialized()
+    {
+        // Initialize with first bot message
+        ChatMessages.Add(new ChatMessage { IsUser = false, Text = "Hi there! I'm FinBot. To get started, what's your full legal name?" });
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(CurrentInput))
+            return;
+
+        // Add user message
+        ChatMessages.Add(new ChatMessage { IsUser = true, Text = CurrentInput });
+        
+        // Process the step and add bot response
+        await ProcessStep(CurrentInput);
+        
+        CurrentInput = "";
+        StateHasChanged();
+    }
+
+    private async Task ProcessStep(string userInput)
+    {
+        CurrentStep++;
+        
+        switch (CurrentStep)
+        {
+            case 1:
+                ChatMessages.Add(new ChatMessage { IsUser = false, Text = "Great! And what's your date of birth?" });
+                break;
+            case 2:
+                ChatMessages.Add(new ChatMessage { IsUser = false, Text = "Perfect! Now I have the basics. Let me set up your dashboard..." });
+                await Task.Delay(1000); // Simulate processing
+                Navigation.NavigateTo("/dashboard");
+                break;
+        }
+    }
+
+    private string GetMessageClass(bool isUser)
+    {
+        return isUser ? "chat-bubble-user" : "chat-bubble-ai";
+    }
+
+    private string GetSenderClass(bool isUser)
+    {
+        return isUser ? "text-gray-700" : "text-blue-600";
+    }
+
+    public class ChatMessage
+    {
+        public bool IsUser { get; set; }
+        public string Text { get; set; } = "";
+    }
+}
