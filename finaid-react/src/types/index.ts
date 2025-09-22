@@ -16,10 +16,11 @@ export interface UserProfile {
 
 // FAFSA types
 export interface FAFSAData {
-  studentInformation: StudentInformation;
-  familyInformation: FamilyInformation;
-  financialInformation: FinancialInformation;
-  schoolInformation: SchoolInformation;
+  student: StudentInformation;
+  family: FamilyInformation;
+  financial: FinancialInformation;
+  schools: SchoolInformation[];
+  confirmation?: boolean;
 }
 
 export interface StudentInformation {
@@ -27,25 +28,63 @@ export interface StudentInformation {
   lastName: string;
   ssn: string;
   dateOfBirth: string;
-  citizenshipStatus: string;
+  email: string;
+  phone: string;
+  address: Address;
+}
+
+export interface Address {
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
 }
 
 export interface FamilyInformation {
   maritalStatus: string;
-  taxFilingStatus: string;
+  taxReturnStatus: string;
   householdSize: number;
   numberOfCollegeStudents: number;
+  parents?: ParentInformation[];
+}
+
+export interface ParentInformation {
+  firstName: string;
+  lastName: string;
+  ssn: string;
+  dateOfBirth: string;
+  employmentStatus: string;
 }
 
 export interface FinancialInformation {
-  income: number;
-  assets: number;
-  expenses: number;
+  income: IncomeInformation;
+  assets: AssetInformation;
+  benefits: BenefitInformation;
+}
+
+export interface IncomeInformation {
+  adjustedGrossIncome: number;
+  wages: number;
+  taxableInterest: number;
+  taxExemptInterest: number;
+}
+
+export interface AssetInformation {
+  cash: number;
+  investments: number;
+  realEstate: number;
+}
+
+export interface BenefitInformation {
+  receivesSocialSecurity: boolean;
+  receivesVeteransBenefits: boolean;
+  receivesChildSupport: boolean;
 }
 
 export interface SchoolInformation {
-  schoolCode: string;
+  schoolId: string;
   schoolName: string;
+  housingPlan: string;
   enrollmentStatus: string;
 }
 

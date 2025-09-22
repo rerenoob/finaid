@@ -1,10 +1,46 @@
 import React from 'react';
 import DashboardCard from '../components/common/DashboardCard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import ProgressBar from '../components/dashboard/ProgressBar';
+import StepIndicator from '../components/dashboard/StepIndicator';
+import DeadlineList from '../components/dashboard/DeadlineList';
 import { useProgress } from '../hooks/useProgress';
 
 const Dashboard: React.FC = () => {
   const { data: progress, isLoading, error } = useProgress();
+
+  // Mock data for demonstration
+  const steps = [
+    { id: 'personal', label: 'Personal Info', completed: true, current: false },
+    { id: 'financial', label: 'Financial Info', completed: false, current: true },
+    { id: 'school', label: 'School Selection', completed: false, current: false },
+    { id: 'review', label: 'Review', completed: false, current: false },
+    { id: 'submit', label: 'Submit', completed: false, current: false },
+  ];
+
+  const deadlines = [
+    {
+      id: '1',
+      title: 'FAFSA Submission Deadline',
+      dueDate: new Date('2025-06-30'),
+      type: 'fafsa' as const,
+      priority: 'high' as const,
+    },
+    {
+      id: '2', 
+      title: 'Document Verification',
+      dueDate: new Date('2025-05-15'),
+      type: 'document' as const,
+      priority: 'medium' as const,
+    },
+    {
+      id: '3',
+      title: 'State Aid Deadline',
+      dueDate: new Date('2025-04-01'),
+      type: 'institution' as const,
+      priority: 'high' as const,
+    },
+  ];
 
   if (isLoading) {
     return (
@@ -31,20 +67,26 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Progress Overview */}
-      <DashboardCard title="Application Progress">
-        <div className="space-y-4">
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div 
-              className="bg-primary h-3 rounded-full transition-all duration-300"
-              style={{ width: `${(progress?.currentProgress || 0) * 100}%` }}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <DashboardCard title="Application Progress">
+          <div className="space-y-6">
+            <ProgressBar 
+              progress={(progress?.currentProgress || 0) * 100} 
+              size="lg"
+              showPercentage={true}
             />
+            <StepIndicator steps={steps} />
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>{Math.round((progress?.currentProgress || 0) * 100)}% Complete</span>
+              <span>Step {progress?.currentStep} of {progress?.totalSteps}</span>
+            </div>
           </div>
-          <div className="flex justify-between text-sm text-gray-600">
-            <span>{Math.round((progress?.currentProgress || 0) * 100)}% Complete</span>
-            <span>Step {progress?.currentStep} of {progress?.totalSteps}</span>
-          </div>
-        </div>
-      </DashboardCard>
+        </DashboardCard>
+
+        <DashboardCard title="Upcoming Deadlines">
+          <DeadlineList deadlines={deadlines} />
+        </DashboardCard>
+      </div>
 
       {/* Quick Actions */}
       <DashboardCard title="Quick Actions">

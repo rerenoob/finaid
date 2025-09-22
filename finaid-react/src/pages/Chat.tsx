@@ -1,4 +1,5 @@
 import React from 'react';
+import ChatInterface from '../components/chat/ChatInterface';
 
 const Chat: React.FC = () => {
   return (
@@ -8,35 +9,41 @@ const Chat: React.FC = () => {
         <p className="text-gray-600">Get help with your financial aid questions</p>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h2 className="text-xl font-semibold text-blue-800 mb-2">Coming Soon</h2>
-        <p className="text-blue-600">
-          The AI chat assistant is being migrated from Blazor to React. 
-          This will include real-time messaging and contextual assistance.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Capabilities</h3>
-          <ul className="space-y-2 text-gray-600">
-            <li>• Form field explanations</li>
-            <li>• Document requirements</li>
-            <li>• Eligibility questions</li>
-            <li>• Deadline information</li>
-            <li>• Technical support</li>
-          </ul>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Chat Interface */}
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-lg shadow-md border border-gray-200 h-[600px]">
+            <ChatInterface />
+          </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Features</h3>
-          <ul className="space-y-2 text-gray-600">
-            <li>• Real-time messaging</li>
-            <li>• Context-aware responses</li>
-            <li>• Form integration</li>
-            <li>• Conversation history</li>
-            <li>• Multi-language support</li>
-          </ul>
+        {/* Sidebar */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Capabilities</h3>
+            <ul className="space-y-2 text-gray-600">
+              <li>• Form field explanations</li>
+              <li>• Document requirements</li>
+              <li>• Eligibility questions</li>
+              <li>• Deadline information</li>
+              <li>• Technical support</li>
+            </ul>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
+            <div className="space-y-2">
+              <button className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                <span className="text-blue-700 font-medium">Help with FAFSA form</span>
+              </button>
+              <button className="w-full text-left p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
+                <span className="text-green-700 font-medium">Document requirements</span>
+              </button>
+              <button className="w-full text-left p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors">
+                <span className="text-purple-700 font-medium">Deadline information</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,42 @@
-import React from 'react';
+import React, { useState } from 'react';
+import DocumentUpload from '../components/documents/DocumentUpload';
+import DocumentList from '../components/documents/DocumentList';
+
+interface Document {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  uploadedAt: Date;
+  status: 'pending' | 'verified' | 'rejected';
+  verificationResult?: string;
+}
 
 const Documents: React.FC = () => {
+  const [documents, setDocuments] = useState<Document[]>([]);
+
+  const handleUploadComplete = (files: File[]) => {
+    const newDocuments: Document[] = files.map(file => ({
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      name: file.name,
+      type: file.type || 'document',
+      size: file.size,
+      uploadedAt: new Date(),
+      status: 'pending'
+    }));
+    
+    setDocuments(prev => [...prev, ...newDocuments]);
+  };
+
+  const handleDocumentSelect = (document: Document) => {
+    console.log('Selected document:', document);
+    // TODO: Implement document viewer
+  };
+
+  const handleDocumentDelete = (documentId: string) => {
+    setDocuments(prev => prev.filter(doc => doc.id !== documentId));
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -8,35 +44,37 @@ const Documents: React.FC = () => {
         <p className="text-gray-600">Upload and manage your financial aid documents</p>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h2 className="text-xl font-semibold text-blue-800 mb-2">Coming Soon</h2>
-        <p className="text-blue-600">
-          The document management system is being migrated from Blazor to React. 
-          This will include file upload, OCR processing, and verification features.
-        </p>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Upload Section */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Upload Documents</h2>
+            <DocumentUpload onUploadComplete={handleUploadComplete} />
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Document Types</h3>
-          <ul className="space-y-2 text-gray-600">
-            <li>• Tax Returns (W-2, 1099)</li>
-            <li>• Identification Documents</li>
-            <li>• Income Verification</li>
-            <li>• Bank Statements</li>
-            <li>• School Records</li>
-          </ul>
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Document Types</h3>
+            <ul className="space-y-2 text-gray-600">
+              <li>• Tax Returns (W-2, 1099)</li>
+              <li>• Identification Documents</li>
+              <li>• Income Verification</li>
+              <li>• Bank Statements</li>
+              <li>• School Records</li>
+            </ul>
+          </div>
         </div>
 
+        {/* Document List */}
         <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Features</h3>
-          <ul className="space-y-2 text-gray-600">
-            <li>• Drag & drop upload</li>
-            <li>• Automatic OCR processing</li>
-            <li>• Document verification</li>
-            <li>• Progress tracking</li>
-            <li>• Secure storage</li>
-          </ul>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-800">Your Documents</h2>
+            <span className="text-sm text-gray-500">{documents.length} documents</span>
+          </div>
+          <DocumentList 
+            documents={documents}
+            onDocumentSelect={handleDocumentSelect}
+            onDocumentDelete={handleDocumentDelete}
+          />
         </div>
       </div>
     </div>
