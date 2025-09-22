@@ -1,4 +1,3 @@
-using finaid.Components;
 using finaid.Configuration;
 using finaid.Data;
 using finaid.Data.Extensions;
@@ -13,7 +12,6 @@ using finaid.Services.Knowledge;
 using finaid.Services.OCR;
 using finaid.Services.Storage;
 using finaid.BackgroundServices;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Polly;
@@ -43,14 +41,12 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 });
 
 // Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+builder.Services.AddControllers();
 
 // Add authentication services (placeholder for future implementation)
 builder.Services.AddAuthentication()
     .AddCookie();
 builder.Services.AddAuthorization();
-builder.Services.AddCascadingAuthenticationState();
 
 // Add application services
 builder.Services.AddSingleton<AppStateService>();
@@ -173,15 +169,13 @@ builder.Services.AddScoped<finaid.Services.OCR.DocumentClassificationService>();
 // Add background OCR processing service
 builder.Services.AddHostedService<finaid.BackgroundServices.OCRProcessingService>();
 
-// Add Document UI services
-builder.Services.AddScoped<finaid.Services.Documents.IDocumentUIService, finaid.Services.Documents.DocumentUIService>();
+
 
 // Add Dashboard services
 builder.Services.AddScoped<finaid.Services.Dashboard.IDashboardDataService, finaid.Services.Dashboard.DashboardDataService>();
 builder.Services.AddScoped<finaid.Services.Progress.ProgressCalculationService>();
 
-// Add UI services
-builder.Services.AddScoped<finaid.Services.UI.ViewportService>();
+
 
 // Register appropriate API client based on configuration
 builder.Services.AddScoped<IFederalApiClient>(serviceProvider =>
@@ -200,32 +194,38 @@ builder.Services.AddScoped<IFederalApiClient>(serviceProvider =>
 // For development, we'll create a mock service that doesn't require Redis
 builder.Services.AddScoped<finaid.Services.AI.IConversationContextService, finaid.Services.AI.MockConversationContextService>();
 
-// Add SignalR for real-time updates
-builder.Services.AddSignalR();
+// Add CORS for React frontend
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("http://localhost:5173", "https://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseExceptionHandler("/error");
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
 
-app.UseStaticFiles();
-app.UseAntiforgery();
+app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+app.MapControllers();
 
-// Map SignalR hubs
-app.MapHub<finaid.Hubs.ChatHub>("/hubs/chat");
+
 
 // Initialize database and seed development data
 await app.InitializeDatabaseAsync();

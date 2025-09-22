@@ -9,13 +9,19 @@ guidance for development.
 # CRUSH.md - Development Guide
 
 ## Build & Test Commands
+### Backend (ASP.NET Core API)
 - `dotnet build` - Build solution
-- `dotnet run` - Run application (HTTPS:7253, HTTP:5033)
+- `dotnet run` - Run API (HTTPS:7253, HTTP:5033)
 - `dotnet watch run` - Run with hot reload
 - `dotnet test` - Run all tests
 - `dotnet test --filter "FullyQualifiedName~TestClassName"` - Run single test
 - `dotnet ef migrations add` - Add EF migration
 - `dotnet ef database update` - Update database
+
+### Frontend (React)
+- `cd finaid-react && npm run dev` - Run React app (http://localhost:5173)
+- `cd finaid-react && npm run build` - Build React app
+- `cd finaid-react && npm run lint` - Lint code
 
 ## Code Style Guidelines
 - **Namespaces**: `finaid.{Area}.{SubArea}` (e.g., `finaid.Services.AI`)
@@ -38,5 +44,6 @@ guidance for development.
 - Nullable reference types enabled
 - Implicit usings enabled
 - Use `DateTime.UtcNow` for timestamps
-- Follow Blazor component naming (.razor files)
 - Separate models by domain area (FAFSA, Eligibility, AI, etc.)
+- API controllers follow REST conventions
+- React components use TypeScript and functional components with hooks

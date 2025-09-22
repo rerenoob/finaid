@@ -11,41 +11,56 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an ASP.NET Core 8.0 Blazor Server application named "finaid". It uses interactive server-side components with Razor syntax.
+This is an ASP.NET Core 8.0 Web API backend named "finaid" with a React frontend. The backend provides REST APIs and the frontend is built with React, TypeScript, and Vite.
 
 ## Development Commands
 
-### Running the application
+### Running the Backend API
 ```bash
+cd /home/dpham/Projects/finaid
 dotnet run
-# Or with specific profile:
-dotnet run --launch-profile https
+# Or with hot reload:
+dotnet watch run
 ```
-The app runs on https://localhost:7253 (HTTPS) and http://localhost:5033 (HTTP) by default.
+The API runs on https://localhost:7253 (HTTPS) and http://localhost:5033 (HTTP) by default.
 
-### Build and restore
+### Running the React Frontend
+```bash
+cd /home/dpham/Projects/finaid/finaid-react
+npm run dev
+```
+The React app runs on http://localhost:5173 by default.
+
+### Backend Build and Restore
 ```bash
 dotnet build
 dotnet restore
 ```
 
-### Watch mode for development
+### Frontend Build
 ```bash
-dotnet watch run
+cd /home/dpham/Projects/finaid/finaid-react
+npm run build
 ```
 
 ## Architecture
 
-- **Framework**: ASP.NET Core 8.0 with Blazor Server
-- **Rendering**: Interactive Server Components
+### Backend (ASP.NET Core 8.0 Web API)
+- **Framework**: ASP.NET Core 8.0 Web API
 - **Entry Point**: `Program.cs` configures services and middleware pipeline
-- **Components**: Located in `/Components/` directory
-  - `App.razor` - Root application component with HTML structure
-  - `Routes.razor` - Routing configuration
-  - `/Pages/` - Page components (Home, Counter, Weather, Error)
-  - `/Layout/` - Layout components (MainLayout, NavMenu)
-- **Static Files**: Served from `/wwwroot/`
-- **Styling**: Uses Bootstrap CSS framework
+- **Controllers**: Located in `/Controllers/` directory
+- **Services**: Business logic in `/Services/` directory
+- **Models**: Data models in `/Models/` directory
+- **Database**: Entity Framework with SQLite (dev) / SQL Server (prod)
+
+### Frontend (React + TypeScript + Vite)
+- **Framework**: React 19 with TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS
+- **Location**: `/finaid-react/` directory
+- **Entry Point**: `src/main.tsx`
+- **Pages**: Located in `src/pages/`
+- **Components**: Located in `src/components/`
 
 ## Key Configuration
 
