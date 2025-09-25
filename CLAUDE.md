@@ -47,6 +47,10 @@ npm run build
 
 ### Backend (ASP.NET Core 8.0 Web API)
 - **Framework**: ASP.NET Core 8.0 Web API
+- **Cloud Platform**: AWS (Amazon Web Services)
+- **AI Service**: AWS Bedrock with Claude model
+- **Document Processing**: AWS Textract
+- **File Storage**: AWS S3
 - **Entry Point**: `Program.cs` configures services and middleware pipeline
 - **Controllers**: Located in `/Controllers/` directory
 - **Services**: Business logic in `/Services/` directory

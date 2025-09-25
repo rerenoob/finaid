@@ -18,6 +18,9 @@ using Polly;
 using Polly.Extensions.Http;
 using FluentValidation;
 using System.Reflection;
+using Amazon.BedrockRuntime;
+using Amazon.Textract;
+using Amazon.S3;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,9 +66,9 @@ builder.Services.Configure<FederalApiConfiguration>(
 builder.Services.Configure<EligibilitySettings>(
     builder.Configuration.GetSection(EligibilitySettings.SectionName));
 
-// Configure Azure OpenAI settings (required for AI form assistance)
-builder.Services.Configure<AzureOpenAISettings>(
-    builder.Configuration.GetSection(AzureOpenAISettings.SectionName));
+// Configure AWS Bedrock settings (required for AI form assistance)
+builder.Services.Configure<AWSBedrockSettings>(
+    builder.Configuration.GetSection(AWSBedrockSettings.SectionName));
 
 // Add Federal API services
 builder.Services.AddSingleton<IRateLimitingService, RateLimitingService>();
@@ -98,72 +101,69 @@ builder.Services.AddScoped<finaid.Services.AI.MockAIAssistantService>();
 // Register appropriate AI client based on configuration
 builder.Services.AddScoped<IAIAssistantService>(serviceProvider =>
 {
-    var configuration = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<AzureOpenAISettings>>();
+    var configuration = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<AWSBedrockSettings>>();
     var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
     
-    // Check if Azure OpenAI is properly configured
+    // Check if AWS Bedrock is properly configured
     var settings = configuration.Value;
-    if (string.IsNullOrWhiteSpace(settings.Endpoint) || 
-        settings.Endpoint.Contains("your-openai-resource") ||
-        string.IsNullOrWhiteSpace(settings.ApiKey) || 
-        settings.ApiKey.Contains("your-api-key") ||
-        string.IsNullOrWhiteSpace(settings.DeploymentName))
+    if (string.IsNullOrWhiteSpace(settings.AccessKeyId) || 
+        settings.AccessKeyId.Contains("your-access-key") ||
+        string.IsNullOrWhiteSpace(settings.SecretAccessKey) || 
+        settings.SecretAccessKey.Contains("your-secret-key") ||
+        string.IsNullOrWhiteSpace(settings.ModelId))
     {
-        logger.LogWarning("Azure OpenAI not properly configured, using mock service for development");
+        logger.LogWarning("AWS Bedrock not properly configured, using mock service for development");
         return serviceProvider.GetRequiredService<finaid.Services.AI.MockAIAssistantService>();
     }
     
-    return new AzureOpenAIService(configuration, serviceProvider.GetRequiredService<ILogger<AzureOpenAIService>>());
+    return new AWSBedrockService(configuration, serviceProvider.GetRequiredService<ILogger<AWSBedrockService>>());
 });
 
 // Add Form services
 builder.Services.AddScoped<IFormAssistanceService, FormAssistanceService>();
 
-// Configure Document Storage settings
-builder.Services.Configure<finaid.Configuration.DocumentStorageSettings>(
-    builder.Configuration.GetSection(finaid.Configuration.DocumentStorageSettings.SectionName));
+// Configure AWS S3 settings
+builder.Services.Configure<AWSS3Settings>(
+    builder.Configuration.GetSection(AWSS3Settings.SectionName));
 
-// Add Azure Blob Storage client
+// Add AWS S3 client
 builder.Services.AddSingleton(provider =>
 {
-    var configuration = provider.GetRequiredService<IConfiguration>();
-    var connectionString = configuration.GetConnectionString("AzureStorage");
+    var configuration = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<AWSS3Settings>>();
+    var settings = configuration.Value;
     
-    if (string.IsNullOrEmpty(connectionString))
+    var config = new AmazonS3Config
     {
-        // Use development storage emulator if no connection string is configured
-        connectionString = "UseDevelopmentStorage=true";
-    }
+        RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(settings.Region)
+    };
     
-    return new Azure.Storage.Blobs.BlobServiceClient(connectionString);
+    return new AmazonS3Client(settings.AccessKeyId, settings.SecretAccessKey, config);
 });
 
 // Add Document Storage services
-builder.Services.AddScoped<finaid.Services.Storage.IDocumentStorageService, finaid.Services.Storage.DocumentStorageService>();
+builder.Services.AddScoped<finaid.Services.Storage.IDocumentStorageService, finaid.Services.Storage.AWSS3StorageService>();
 builder.Services.AddScoped<finaid.Services.Security.IVirusScanningService, finaid.Services.Security.VirusScanningService>();
 
-// Configure Form Recognizer settings
-builder.Services.Configure<FormRecognizerSettings>(
-    builder.Configuration.GetSection(FormRecognizerSettings.SectionName));
+// Configure AWS Textract settings
+builder.Services.Configure<AWSTextractSettings>(
+    builder.Configuration.GetSection(AWSTextractSettings.SectionName));
 
-// Add Azure Form Recognizer client
+// Add AWS Textract client
 builder.Services.AddSingleton(provider =>
 {
-    var configuration = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<FormRecognizerSettings>>();
+    var configuration = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<AWSTextractSettings>>();
     var settings = configuration.Value;
     
-    if (string.IsNullOrEmpty(settings.Endpoint) || string.IsNullOrEmpty(settings.ApiKey))
+    var config = new AmazonTextractConfig
     {
-        throw new InvalidOperationException("Form Recognizer endpoint and API key must be configured");
-    }
+        RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(settings.Region)
+    };
     
-    return new Azure.AI.FormRecognizer.DocumentAnalysis.DocumentAnalysisClient(
-        new Uri(settings.Endpoint), 
-        new Azure.AzureKeyCredential(settings.ApiKey));
+    return new AmazonTextractClient(settings.AccessKeyId, settings.SecretAccessKey, config);
 });
 
 // Add OCR services
-builder.Services.AddScoped<finaid.Services.OCR.IOCRService, finaid.Services.OCR.FormRecognizerService>();
+builder.Services.AddScoped<finaid.Services.OCR.IOCRService, finaid.Services.OCR.AWSTextractService>();
 builder.Services.AddScoped<finaid.Services.OCR.DocumentClassificationService>();
 
 // Add background OCR processing service

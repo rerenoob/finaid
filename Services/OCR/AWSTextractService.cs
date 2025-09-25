@@ -1,42 +1,41 @@
-using Azure;
-using Azure.AI.FormRecognizer;
-using Azure.AI.FormRecognizer.DocumentAnalysis;
+using Amazon.Textract;
+using Amazon.Textract.Model;
+using finaid.Configuration;
 using finaid.Models.Document;
 using finaid.Models.OCR;
 using finaid.Services.Storage;
-using finaid.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace finaid.Services.OCR;
 
-public class FormRecognizerService : IOCRService
+public class AWSTextractService : IOCRService
 {
-    private readonly DocumentAnalysisClient _documentAnalysisClient;
+    private readonly AmazonTextractClient _textractClient;
     private readonly IDocumentStorageService _documentStorageService;
-    private readonly FormRecognizerSettings _settings;
-    private readonly ILogger<FormRecognizerService> _logger;
-    private readonly Dictionary<DocumentType, string> _prebuiltModels;
+    private readonly AWSTextractSettings _settings;
+    private readonly ILogger<AWSTextractService> _logger;
+    private readonly Dictionary<DocumentType, FeatureType> _featureMappings;
 
-    public FormRecognizerService(
-        DocumentAnalysisClient documentAnalysisClient,
+    public AWSTextractService(
+        AmazonTextractClient textractClient,
         IDocumentStorageService documentStorageService,
-        IOptions<FormRecognizerSettings> settings,
-        ILogger<FormRecognizerService> logger)
+        IOptions<AWSTextractSettings> settings,
+        ILogger<AWSTextractService> logger)
     {
-        _documentAnalysisClient = documentAnalysisClient;
+        _textractClient = textractClient;
         _documentStorageService = documentStorageService;
         _settings = settings.Value;
         _logger = logger;
         
-        _prebuiltModels = new Dictionary<DocumentType, string>
+        _featureMappings = new Dictionary<DocumentType, FeatureType>
         {
-            { DocumentType.TaxReturn, "prebuilt-tax.us.1040" },
-            { DocumentType.W2Form, "prebuilt-tax.us.w2" },
-            { DocumentType.BankStatement, "prebuilt-document" },
-            { DocumentType.DriversLicense, "prebuilt-idDocument" },
-            { DocumentType.Passport, "prebuilt-idDocument" }
+            { DocumentType.TaxReturn, FeatureType.FORMS },
+            { DocumentType.W2Form, FeatureType.FORMS },
+            { DocumentType.BankStatement, FeatureType.TABLES },
+            { DocumentType.DriversLicense, FeatureType.FORMS },
+            { DocumentType.Passport, FeatureType.FORMS }
         };
     }
 
@@ -44,7 +43,7 @@ public class FormRecognizerService : IOCRService
     {
         try
         {
-            _logger.LogInformation("Starting OCR processing for document {DocumentId} of type {DocumentType}", 
+            _logger.LogInformation("Starting Textract processing for document {DocumentId} of type {DocumentType}", 
                 documentId, expectedType);
 
             var documentStream = await _documentStorageService.DownloadDocumentAsync(documentId, cancellationToken);
@@ -55,15 +54,10 @@ public class FormRecognizerService : IOCRService
                 throw new InvalidOperationException($"Document metadata not found for {documentId}");
             }
 
-            var modelId = GetModelForDocumentType(expectedType);
-            var operation = await _documentAnalysisClient.AnalyzeDocumentAsync(
-                WaitUntil.Completed,
-                modelId,
-                documentStream,
-                cancellationToken: cancellationToken);
+            var featureTypes = GetFeatureTypesForDocumentType(expectedType);
+            var request = CreateAnalyzeDocumentRequest(documentStream, featureTypes);
 
-            var result = await operation.WaitForCompletionAsync(cancellationToken);
-            var analyzedDocument = result.Value;
+            var response = await _textractClient.AnalyzeDocumentAsync(request, cancellationToken);
 
             var ocrResult = new OCRResult
             {
@@ -74,42 +68,22 @@ public class FormRecognizerService : IOCRService
             };
 
             // Extract text content
-            ocrResult.RawText = analyzedDocument.Content ?? string.Empty;
+            ocrResult.RawText = ExtractTextFromResponse(response);
 
-            // Calculate overall confidence
+            // Extract fields and calculate confidence
             var confidenceScores = new List<float>();
             
-            // Process documents and extract fields
-            foreach (var document in analyzedDocument.Documents)
+            // Process forms
+            foreach (var block in response.Blocks)
             {
-                confidenceScores.Add(document.Confidence);
-                
-                foreach (var field in document.Fields)
+                if (block.BlockType == BlockType.KEY_VALUE_SET && block.EntityTypes?.Contains("KEY") == true)
                 {
-                    var extractedField = ConvertToExtractedField(field.Key, field.Value);
-                    if (extractedField != null)
+                    var field = ExtractFieldFromBlock(block, response.Blocks);
+                    if (field != null)
                     {
-                        ocrResult.Fields.Add(extractedField);
+                        ocrResult.Fields.Add(field);
+                        confidenceScores.Add((float)field.Confidence);
                     }
-                }
-            }
-
-            // Process key-value pairs if available
-            foreach (var kvp in analyzedDocument.KeyValuePairs)
-            {
-                if (kvp.Key != null && kvp.Value != null)
-                {
-                    var field = new ExtractedField
-                    {
-                        FieldName = kvp.Key.Content ?? "unknown",
-                        Value = kvp.Value.Content,
-                        Confidence = (decimal)kvp.Confidence,
-                        DataType = DataTypes.Text,
-                        RequiresValidation = kvp.Confidence < _settings.ConfidenceThreshold
-                    };
-                    
-                    ocrResult.Fields.Add(field);
-                    confidenceScores.Add(kvp.Confidence);
                 }
             }
 
@@ -129,14 +103,14 @@ public class FormRecognizerService : IOCRService
                     documentId, ocrResult.OverallConfidence);
             }
 
-            _logger.LogInformation("OCR processing completed for document {DocumentId} with confidence {Confidence}", 
+            _logger.LogInformation("Textract processing completed for document {DocumentId} with confidence {Confidence}", 
                 documentId, ocrResult.OverallConfidence);
 
             return ocrResult;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "OCR processing failed for document {DocumentId}", documentId);
+            _logger.LogError(ex, "Textract processing failed for document {DocumentId}", documentId);
             return new OCRResult
             {
                 DocumentId = documentId,
@@ -153,17 +127,18 @@ public class FormRecognizerService : IOCRService
         {
             var documentStream = await _documentStorageService.DownloadDocumentAsync(documentId, cancellationToken);
             
-            var operation = await _documentAnalysisClient.AnalyzeDocumentAsync(
-                WaitUntil.Completed,
-                "prebuilt-document",
-                documentStream,
-                cancellationToken: cancellationToken);
+            var request = new DetectDocumentTextRequest
+            {
+                Document = new Document
+                {
+                    Bytes = new MemoryStream(await ReadStreamToBytesAsync(documentStream))
+                }
+            };
 
-            var result = await operation.WaitForCompletionAsync(cancellationToken);
-            var analyzedDocument = result.Value;
+            var response = await _textractClient.DetectDocumentTextAsync(request, cancellationToken);
 
             // Simple classification based on content keywords
-            var content = analyzedDocument.Content?.ToLowerInvariant() ?? string.Empty;
+            var content = ExtractTextFromResponse(response);
             
             if (content.Contains("form 1040") || content.Contains("tax return"))
                 return DocumentType.TaxReturn;
@@ -206,32 +181,25 @@ public class FormRecognizerService : IOCRService
 
     public async Task<decimal> GetConfidenceScoreAsync(Guid documentId, CancellationToken cancellationToken = default)
     {
-        // This would typically be cached or retrieved from a database
-        // For now, we'll process the document to get the confidence
         var result = await ProcessDocumentAsync(documentId, DocumentType.Other, cancellationToken);
         return result.OverallConfidence;
     }
 
     public Task<ProcessingStatus> GetProcessingStatusAsync(Guid documentId, CancellationToken cancellationToken = default)
     {
-        // This would be retrieved from a processing status database/cache
-        // For now, return pending as placeholder
         return Task.FromResult(ProcessingStatus.Pending);
     }
 
     public async Task<OCRResult> RetryProcessingAsync(Guid documentId, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Retrying OCR processing for document {DocumentId}", documentId);
+        _logger.LogInformation("Retrying Textract processing for document {DocumentId}", documentId);
         
-        // Determine document type first
         var documentType = await ClassifyDocumentAsync(documentId, cancellationToken);
         return await ProcessDocumentAsync(documentId, documentType, cancellationToken);
     }
 
     public Task<List<DocumentTemplate>> GetAvailableTemplatesAsync(CancellationToken cancellationToken = default)
     {
-        // This would typically come from a database or configuration
-        // For now, return basic templates based on supported document types
         return Task.FromResult(new List<DocumentTemplate>
         {
             new DocumentTemplate
@@ -275,45 +243,77 @@ public class FormRecognizerService : IOCRService
         return Task.FromResult(validationResult);
     }
 
-    private string GetModelForDocumentType(DocumentType documentType)
+    private List<FeatureType> GetFeatureTypesForDocumentType(DocumentType documentType)
     {
-        return _prebuiltModels.TryGetValue(documentType, out var modelId) 
-            ? modelId 
-            : "prebuilt-document";
+        var features = new List<FeatureType> { FeatureType.FORMS };
+        
+        if (documentType == DocumentType.BankStatement)
+        {
+            features.Add(FeatureType.TABLES);
+        }
+        
+        return features;
     }
 
-    private ExtractedField? ConvertToExtractedField(string fieldName, DocumentField documentField)
+    private AnalyzeDocumentRequest CreateAnalyzeDocumentRequest(Stream documentStream, List<FeatureType> featureTypes)
     {
-        if (documentField.Content == null) return null;
-
-        var dataType = documentField.FieldType switch
+        return new AnalyzeDocumentRequest
         {
-            DocumentFieldType.Currency => DataTypes.Currency,
-            DocumentFieldType.Date => DataTypes.Date,
-            DocumentFieldType.Int64 => DataTypes.Number,
-            DocumentFieldType.PhoneNumber => DataTypes.Phone,
-            DocumentFieldType.Boolean => DataTypes.Boolean,
-            _ => DataTypes.Text
+            Document = new Document
+            {
+                Bytes = new MemoryStream(ReadStreamToBytesAsync(documentStream).Result)
+            },
+            FeatureTypes = featureTypes.Select(ft => ft.ToString()).ToList()
         };
+    }
 
-        object? value = documentField.FieldType switch
-        {
-            DocumentFieldType.Currency => documentField.Value.AsCurrency(),
-            DocumentFieldType.Date => documentField.Value.AsDate(),
-            DocumentFieldType.Int64 => documentField.Value.AsInt64(),
-            DocumentFieldType.Double => documentField.Value.AsDouble(),
-            DocumentFieldType.Boolean => documentField.Value.AsBoolean(),
-            _ => documentField.Content
-        };
+    private string ExtractTextFromResponse(AnalyzeDocumentResponse response)
+    {
+        var textBlocks = response.Blocks
+            .Where(b => b.BlockType == BlockType.LINE || b.BlockType == BlockType.WORD)
+            .OrderBy(b => b.Geometry?.BoundingBox?.Top ?? 0)
+            .ThenBy(b => b.Geometry?.BoundingBox?.Left ?? 0);
+
+        return string.Join(" ", textBlocks.Select(b => b.Text));
+    }
+
+    private string ExtractTextFromResponse(DetectDocumentTextResponse response)
+    {
+        var textBlocks = response.Blocks
+            .Where(b => b.BlockType == BlockType.LINE || b.BlockType == BlockType.WORD)
+            .OrderBy(b => b.Geometry?.BoundingBox?.Top ?? 0)
+            .ThenBy(b => b.Geometry?.BoundingBox?.Left ?? 0);
+
+        return string.Join(" ", textBlocks.Select(b => b.Text));
+    }
+
+    private ExtractedField? ExtractFieldFromBlock(Block keyBlock, List<Block> allBlocks)
+    {
+        var valueBlock = allBlocks.FirstOrDefault(b => 
+            b.BlockType == BlockType.KEY_VALUE_SET && 
+            b.EntityTypes?.Contains("VALUE") == true &&
+            b.Relationships?.Any(r => r.Type == "CHILD" && r.Ids.Contains(keyBlock.Id)) == true);
+
+        if (valueBlock == null) return null;
+
+        var fieldName = keyBlock.Text ?? "unknown";
+        var fieldValue = valueBlock.Text ?? string.Empty;
 
         return new ExtractedField
         {
             FieldName = fieldName,
-            Value = value,
-            Confidence = (decimal)(documentField.Confidence ?? 0),
-            DataType = dataType,
-            RequiresValidation = (documentField.Confidence ?? 0) < _settings.ConfidenceThreshold
+            Value = fieldValue,
+            Confidence = (decimal)keyBlock.Confidence,
+            DataType = DataTypes.Text,
+            RequiresValidation = keyBlock.Confidence < _settings.ConfidenceThreshold
         };
+    }
+
+    private async Task<byte[]> ReadStreamToBytesAsync(Stream stream)
+    {
+        using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream);
+        return memoryStream.ToArray();
     }
 
     private string? ValidateField(ExtractedField field)

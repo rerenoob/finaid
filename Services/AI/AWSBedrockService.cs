@@ -1,6 +1,5 @@
-using Azure.AI.OpenAI;
-using Azure;
-using Azure.Identity;
+using Amazon.BedrockRuntime;
+using Amazon.BedrockRuntime.Model;
 using finaid.Configuration;
 using finaid.Models.AI;
 using Microsoft.Extensions.Options;
@@ -12,26 +11,26 @@ using System.Text.RegularExpressions;
 namespace finaid.Services.AI;
 
 /// <summary>
-/// Azure OpenAI service implementation for AI assistant functionality
+/// AWS Bedrock service implementation for AI assistant functionality
 /// </summary>
-public class AzureOpenAIService : IAIAssistantService, IDisposable
+public class AWSBedrockService : IAIAssistantService, IDisposable
 {
-    private readonly OpenAIClient _openAIClient;
-    private readonly AzureOpenAISettings _settings;
-    private readonly ILogger<AzureOpenAIService> _logger;
+    private readonly AmazonBedrockRuntimeClient _bedrockClient;
+    private readonly AWSBedrockSettings _settings;
+    private readonly ILogger<AWSBedrockService> _logger;
     private bool _disposed = false;
 
-    public AzureOpenAIService(
-        IOptions<AzureOpenAISettings> settings,
-        ILogger<AzureOpenAIService> logger)
+    public AWSBedrockService(
+        IOptions<AWSBedrockSettings> settings,
+        ILogger<AWSBedrockService> logger)
     {
         _settings = settings.Value ?? throw new ArgumentNullException(nameof(settings));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         ValidateSettings();
-        _openAIClient = CreateOpenAIClient();
+        _bedrockClient = CreateBedrockClient();
 
-        _logger.LogInformation("Azure OpenAI service initialized with deployment: {Deployment}", _settings.DeploymentName);
+        _logger.LogInformation("AWS Bedrock service initialized with model: {ModelId}", _settings.ModelId);
     }
 
     public async Task<AIResponse> GetChatCompletionAsync(List<ChatMessage> messages, CancellationToken cancellationToken = default)
@@ -50,27 +49,27 @@ public class AzureOpenAIService : IAIAssistantService, IDisposable
                 requestId, messages.Count);
 
             var optimizedMessages = OptimizeMessagesForContext(messages);
-            var chatCompletionsOptions = CreateChatCompletionsOptions(optimizedMessages);
+            var request = CreateChatRequest(optimizedMessages);
 
             var response = await ExecuteWithRetryAsync(async () =>
             {
-                return await _openAIClient.GetChatCompletionsAsync(chatCompletionsOptions, cancellationToken);
+                return await _bedrockClient.InvokeModelAsync(request, cancellationToken);
             });
 
             stopwatch.Stop();
 
-            if (response?.Value?.Choices?.Count > 0)
+            if (response?.HttpStatusCode == System.Net.HttpStatusCode.OK)
             {
-                var choice = response.Value.Choices[0];
-                var metadata = CreateResponseMetadata(response.Value, stopwatch.Elapsed, requestId);
+                var content = ExtractContentFromResponse(response);
+                var metadata = CreateResponseMetadata(response, stopwatch.Elapsed, requestId);
 
-                _logger.LogInformation("Chat completion successful for request {RequestId}. Tokens: {TotalTokens}, Time: {Duration}ms",
-                    requestId, metadata.TotalTokens, stopwatch.ElapsedMilliseconds);
+                _logger.LogInformation("Chat completion successful for request {RequestId}. Time: {Duration}ms",
+                    requestId, stopwatch.ElapsedMilliseconds);
 
-                return AIResponse.Success(choice.Message.Content ?? string.Empty, metadata);
+                return AIResponse.Success(content, metadata);
             }
 
-            _logger.LogWarning("No response choices received for request {RequestId}", requestId);
+            _logger.LogWarning("No valid response received for request {RequestId}", requestId);
             return AIResponse.Error("No response generated", AIErrorCode.Unknown);
         }
         catch (Exception ex)
@@ -240,40 +239,31 @@ public class AzureOpenAIService : IAIAssistantService, IDisposable
             yield break;
         }
 
-        var optimizedMessages = OptimizeMessagesForContext(messages);
-        var options = CreateChatCompletionsOptions(optimizedMessages);
-
-        var streamingResponse = await ExecuteWithRetryAsync(async () =>
-        {
-            return await _openAIClient.GetChatCompletionsStreamingAsync(options, cancellationToken);
-        });
-
-        await foreach (var completionUpdate in streamingResponse.EnumerateValues().WithCancellation(cancellationToken))
-        {
-            if (completionUpdate.ContentUpdate != null)
-            {
-                yield return completionUpdate.ContentUpdate;
-            }
-        }
+        // Note: AWS Bedrock streaming is more complex and requires different API calls
+        // For now, we'll use non-streaming and yield the complete response
+        var streamingResponse = await GetChatCompletionAsync(messages, cancellationToken);
+        yield return streamingResponse.Content;
     }
 
     public async Task<bool> IsHealthyAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var options = new ChatCompletionsOptions(_settings.DeploymentName, new[] { 
-                new ChatRequestUserMessage("Say 'OK'") 
-            })
+            var request = new InvokeModelRequest
             {
-                MaxTokens = 10,
-                Temperature = 0
+                ModelId = _settings.ModelId,
+                ContentType = "application/json",
+                Body = GenerateJsonBody(new List<ChatMessage> 
+                { 
+                    ChatMessageFactory.CreateUserMessage("Say 'OK'") 
+                })
             };
 
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeoutCts.CancelAfter(TimeSpan.FromSeconds(10));
 
-            var response = await _openAIClient.GetChatCompletionsAsync(options, timeoutCts.Token);
-            return response?.Value?.Choices?.Count > 0;
+            var response = await _bedrockClient.InvokeModelAsync(request, timeoutCts.Token);
+            return response?.HttpStatusCode == System.Net.HttpStatusCode.OK;
         }
         catch (Exception ex)
         {
@@ -328,32 +318,85 @@ public class AzureOpenAIService : IAIAssistantService, IDisposable
 
     private void ValidateSettings()
     {
-        if (string.IsNullOrWhiteSpace(_settings.Endpoint))
-            throw new InvalidOperationException("Azure OpenAI endpoint is not configured");
+        if (string.IsNullOrWhiteSpace(_settings.Region))
+            throw new InvalidOperationException("AWS Region is not configured");
 
-        if (string.IsNullOrWhiteSpace(_settings.ApiKey) && !_settings.UseAzureAD)
-            throw new InvalidOperationException("Azure OpenAI API key is not configured and Azure AD is not enabled");
+        if (string.IsNullOrWhiteSpace(_settings.AccessKeyId))
+            throw new InvalidOperationException("AWS Access Key ID is not configured");
 
-        if (string.IsNullOrWhiteSpace(_settings.DeploymentName))
-            throw new InvalidOperationException("Azure OpenAI deployment name is not configured");
+        if (string.IsNullOrWhiteSpace(_settings.SecretAccessKey))
+            throw new InvalidOperationException("AWS Secret Access Key is not configured");
+
+        if (string.IsNullOrWhiteSpace(_settings.ModelId))
+            throw new InvalidOperationException("AWS Bedrock Model ID is not configured");
     }
 
-    private OpenAIClient CreateOpenAIClient()
+    private AmazonBedrockRuntimeClient CreateBedrockClient()
     {
-        var endpoint = new Uri(_settings.Endpoint);
+        var config = new AmazonBedrockRuntimeConfig
+        {
+            RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(_settings.Region),
+            Timeout = TimeSpan.FromSeconds(_settings.RequestTimeoutSeconds)
+        };
 
-        if (_settings.UseAzureAD)
+        return new AmazonBedrockRuntimeClient(_settings.AccessKeyId, _settings.SecretAccessKey, config);
+    }
+
+    private InvokeModelRequest CreateChatRequest(List<ChatMessage> messages)
+    {
+        var request = new InvokeModelRequest
         {
-            // Use Azure AD authentication
-            var credential = new DefaultAzureCredential();
-            return new OpenAIClient(endpoint, credential);
-        }
-        else
+            ModelId = _settings.ModelId,
+            ContentType = "application/json",
+            Body = GenerateJsonBody(messages)
+        };
+
+        return request;
+    }
+
+    private MemoryStream GenerateJsonBody(List<ChatMessage> messages)
+    {
+        var claudeMessages = messages.Select(m => new
         {
-            // Use API key authentication
-            var credential = new AzureKeyCredential(_settings.ApiKey);
-            return new OpenAIClient(endpoint, credential);
+            role = m.Role,
+            content = new[] { new { type = "text", text = m.Content } }
+        }).ToList();
+
+        var requestBody = new
+        {
+            anthropic_version = "bedrock-2023-05-31",
+            max_tokens = _settings.MaxTokens,
+            temperature = _settings.Temperature,
+            top_p = _settings.TopP,
+            messages = claudeMessages
+        };
+
+        var json = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+
+        return new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+    }
+
+    private string ExtractContentFromResponse(InvokeModelResponse response)
+    {
+        using var reader = new StreamReader(response.Body);
+        var json = reader.ReadToEnd();
+        
+        var document = JsonDocument.Parse(json);
+        if (document.RootElement.TryGetProperty("content", out var contentArray))
+        {
+            foreach (var contentItem in contentArray.EnumerateArray())
+            {
+                if (contentItem.TryGetProperty("text", out var text))
+                {
+                    return text.GetString() ?? string.Empty;
+                }
+            }
         }
+
+        return string.Empty;
     }
 
     private async Task<T> ExecuteWithRetryAsync<T>(Func<Task<T>> operation)
@@ -370,7 +413,7 @@ public class AzureOpenAIService : IAIAssistantService, IDisposable
             catch (Exception ex) when (retryCount < _settings.MaxRetryAttempts - 1 && IsRetryableException(ex))
             {
                 retryCount++;
-                _logger.LogWarning("Retry attempt {Attempt} for Azure OpenAI request: {Exception}",
+                _logger.LogWarning("Retry attempt {Attempt} for AWS Bedrock request: {Exception}",
                     retryCount, ex.Message);
                 
                 await Task.Delay(delay);
@@ -386,39 +429,8 @@ public class AzureOpenAIService : IAIAssistantService, IDisposable
     {
         return ex is HttpRequestException ||
                ex is TaskCanceledException ||
-               (ex is RequestFailedException rfe && rfe.Status >= 500);
-    }
-
-    private ChatCompletionsOptions CreateChatCompletionsOptions(List<ChatMessage> messages)
-    {
-        var chatMessages = messages.Select(ConvertToChatRequestMessage).ToList();
-        
-        var options = new ChatCompletionsOptions(_settings.DeploymentName, chatMessages)
-        {
-            MaxTokens = _settings.MaxTokens,
-            Temperature = (float)_settings.Temperature,
-            NucleusSamplingFactor = (float)_settings.TopP,
-            FrequencyPenalty = (float)_settings.FrequencyPenalty,
-            PresencePenalty = (float)_settings.PresencePenalty
-        };
-
-        foreach (var stopSequence in _settings.StopSequences)
-        {
-            options.StopSequences.Add(stopSequence);
-        }
-
-        return options;
-    }
-
-    private static ChatRequestMessage ConvertToChatRequestMessage(ChatMessage message)
-    {
-        return message.Role.ToLowerInvariant() switch
-        {
-            "user" => new ChatRequestUserMessage(message.Content),
-            "assistant" => new ChatRequestAssistantMessage(message.Content),
-            "system" => new ChatRequestSystemMessage(message.Content),
-            _ => new ChatRequestUserMessage(message.Content)
-        };
+               ex.Message.Contains("Throttling") ||
+               ex.Message.Contains("ServiceUnavailable");
     }
 
     private List<ChatMessage> OptimizeMessagesForContext(List<ChatMessage> messages)
@@ -451,17 +463,12 @@ public class AzureOpenAIService : IAIAssistantService, IDisposable
         return optimizedMessages;
     }
 
-    private AIResponseMetadata CreateResponseMetadata(ChatCompletions response, TimeSpan processingTime, string requestId)
+    private AIResponseMetadata CreateResponseMetadata(InvokeModelResponse response, TimeSpan processingTime, string requestId)
     {
-        var usage = response.Usage;
         return new AIResponseMetadata
         {
-            PromptTokens = usage?.PromptTokens ?? 0,
-            CompletionTokens = usage?.CompletionTokens ?? 0,
-            TotalTokens = usage?.TotalTokens ?? 0,
-            Model = _settings.ModelName,
+            Model = _settings.ModelId,
             ProcessingTime = processingTime,
-            FinishReason = response.Choices?.FirstOrDefault()?.FinishReason?.ToString(),
             RequestId = requestId,
             RequestTimestamp = DateTime.UtcNow.Subtract(processingTime),
             ResponseTimestamp = DateTime.UtcNow
@@ -476,15 +483,9 @@ public class AzureOpenAIService : IAIAssistantService, IDisposable
                 AIResponse.Error("Request was cancelled or timed out", AIErrorCode.Timeout),
             ArgumentException => 
                 AIResponse.Error($"Invalid request: {ex.Message}", AIErrorCode.InvalidRequest),
-            RequestFailedException rfe when rfe.Status == 401 => 
-                AIResponse.Error("Authentication failed", AIErrorCode.InvalidApiKey),
-            RequestFailedException rfe when rfe.Status == 429 => 
+            Amazon.BedrockRuntime.Model.ThrottlingException => 
                 AIResponse.Error("Rate limit exceeded", AIErrorCode.RateLimitExceeded),
-            RequestFailedException rfe when rfe.Status == 503 => 
-                AIResponse.Error("Service temporarily unavailable", AIErrorCode.ServiceUnavailable),
-            HttpRequestException httpEx when httpEx.Message.Contains("429") => 
-                AIResponse.Error("Rate limit exceeded", AIErrorCode.RateLimitExceeded),
-            HttpRequestException httpEx when httpEx.Message.Contains("503") => 
+            Amazon.BedrockRuntime.Model.ModelTimeoutException => 
                 AIResponse.Error("Service temporarily unavailable", AIErrorCode.ServiceUnavailable),
             _ => 
                 AIResponse.Error($"Unexpected error: {ex.Message}", AIErrorCode.Unknown)
@@ -495,7 +496,7 @@ public class AzureOpenAIService : IAIAssistantService, IDisposable
     {
         if (!_disposed)
         {
-            // OpenAIClient doesn't implement IDisposable in the current version
+            _bedrockClient?.Dispose();
             _disposed = true;
         }
     }

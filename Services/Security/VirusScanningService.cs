@@ -5,11 +5,11 @@ namespace finaid.Services.Security;
 
 public class VirusScanningService : IVirusScanningService
 {
-    private readonly DocumentStorageSettings _settings;
+    private readonly AWSS3Settings _settings;
     private readonly ILogger<VirusScanningService> _logger;
 
     public VirusScanningService(
-        IOptions<DocumentStorageSettings> settings,
+        IOptions<AWSS3Settings> settings,
         ILogger<VirusScanningService> logger)
     {
         _settings = settings.Value;

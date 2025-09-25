@@ -1,6 +1,6 @@
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-using Azure.Storage.Sas;
+using Amazon.S3;
+using Amazon.S3.Model;
+using Amazon.S3.Transfer;
 using finaid.Configuration;
 using finaid.Models.Documents;
 using finaid.Data;
@@ -12,25 +12,23 @@ using DocumentStatus = finaid.Models.Document.DocumentStatus;
 
 namespace finaid.Services.Storage;
 
-public class DocumentStorageService : IDocumentStorageService
+public class AWSS3StorageService : IDocumentStorageService
 {
-    private readonly BlobServiceClient _blobServiceClient;
-    private readonly BlobContainerClient _containerClient;
-    private readonly DocumentStorageSettings _settings;
-    private readonly ILogger<DocumentStorageService> _logger;
+    private readonly AmazonS3Client _s3Client;
+    private readonly AWSS3Settings _settings;
+    private readonly ILogger<AWSS3StorageService> _logger;
     private readonly ApplicationDbContext _dbContext;
 
-    public DocumentStorageService(
-        BlobServiceClient blobServiceClient,
-        IOptions<DocumentStorageSettings> settings,
-        ILogger<DocumentStorageService> logger,
+    public AWSS3StorageService(
+        AmazonS3Client s3Client,
+        IOptions<AWSS3Settings> settings,
+        ILogger<AWSS3StorageService> logger,
         ApplicationDbContext dbContext)
     {
-        _blobServiceClient = blobServiceClient;
+        _s3Client = s3Client;
         _settings = settings.Value;
         _logger = logger;
         _dbContext = dbContext;
-        _containerClient = _blobServiceClient.GetBlobContainerClient(_settings.ContainerName);
     }
 
     public async Task<StorageResult> UploadDocumentAsync(Stream documentStream, DocumentMetadata metadata, CancellationToken cancellationToken = default)
@@ -44,45 +42,34 @@ public class DocumentStorageService : IDocumentStorageService
                 return StorageResult.CreateFailure(errorMessage!);
             }
 
-            // Generate unique blob path
-            var blobPath = GenerateBlobPath(metadata.UserId, metadata.FileName);
-            var blobClient = _containerClient.GetBlobClient(blobPath);
+            // Generate unique S3 key
+            var s3Key = GenerateS3Key(metadata.UserId, metadata.FileName);
 
             // Calculate file hash
             documentStream.Position = 0;
             var fileHash = await CalculateFileHashAsync(documentStream);
             documentStream.Position = 0;
 
-            // Set blob metadata
-            var blobMetadata = new Dictionary<string, string>
+            // Upload to S3
+            var uploadRequest = new TransferUtilityUploadRequest
             {
-                ["UserId"] = metadata.UserId.ToString(),
-                ["OriginalFileName"] = metadata.FileName,
-                ["ContentType"] = metadata.ContentType,
-                ["DocumentType"] = metadata.Type.ToString(),
-                ["UploadedAt"] = metadata.UploadedAt.ToString("O"),
-                ["FileHash"] = fileHash,
-                ["IsEncrypted"] = metadata.IsEncrypted.ToString()
+                InputStream = documentStream,
+                Key = s3Key,
+                BucketName = _settings.BucketName,
+                ContentType = metadata.ContentType,
+                AutoCloseStream = false
             };
 
-            // Upload options
-            var uploadOptions = new BlobUploadOptions
-            {
-                HttpHeaders = new BlobHttpHeaders
-                {
-                    ContentType = metadata.ContentType
-                },
-                Metadata = blobMetadata,
-                Tags = new Dictionary<string, string>
-                {
-                    ["UserId"] = metadata.UserId.ToString(),
-                    ["DocumentType"] = metadata.Type.ToString(),
-                    ["UploadDate"] = DateTime.UtcNow.ToString("yyyy-MM-dd")
-                }
-            };
+            // Add metadata tags
+            uploadRequest.Metadata.Add("UserId", metadata.UserId.ToString());
+            uploadRequest.Metadata.Add("OriginalFileName", metadata.FileName);
+            uploadRequest.Metadata.Add("DocumentType", metadata.Type.ToString());
+            uploadRequest.Metadata.Add("UploadedAt", metadata.UploadedAt.ToString("O"));
+            uploadRequest.Metadata.Add("FileHash", fileHash);
+            uploadRequest.Metadata.Add("IsEncrypted", metadata.IsEncrypted.ToString());
 
-            // Upload the blob
-            var response = await blobClient.UploadAsync(documentStream, uploadOptions, cancellationToken);
+            var transferUtility = new TransferUtility(_s3Client);
+            await transferUtility.UploadAsync(uploadRequest, cancellationToken);
 
             // Save document record to database
             var userDocument = new UserDocument
@@ -92,7 +79,7 @@ public class DocumentStorageService : IDocumentStorageService
                 DocumentType = metadata.Type,
                 Status = DocumentStatus.Uploaded,
                 FileName = metadata.FileName,
-                BlobPath = blobPath,
+                BlobPath = s3Key,
                 ContentType = metadata.ContentType,
                 FileSizeBytes = metadata.FileSizeBytes,
                 FileHash = fileHash,
@@ -104,9 +91,9 @@ public class DocumentStorageService : IDocumentStorageService
             _dbContext.UserDocuments.Add(userDocument);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Document uploaded successfully: {BlobPath} for User: {UserId}", blobPath, metadata.UserId);
+            _logger.LogInformation("Document uploaded successfully: {S3Key} for User: {UserId}", s3Key, metadata.UserId);
 
-            return StorageResult.CreateSuccess(metadata.Id, blobPath, metadata.FileSizeBytes, fileHash);
+            return StorageResult.CreateSuccess(metadata.Id, s3Key, metadata.FileSizeBytes, fileHash);
         }
         catch (Exception ex)
         {
@@ -125,18 +112,17 @@ public class DocumentStorageService : IDocumentStorageService
                 throw new FileNotFoundException($"Document {documentId} not found");
             }
 
-            var blobClient = _containerClient.GetBlobClient(metadata.BlobPath);
-            
-            if (!await blobClient.ExistsAsync(cancellationToken))
+            var request = new GetObjectRequest
             {
-                throw new FileNotFoundException($"Blob {metadata.BlobPath} not found in storage");
-            }
+                BucketName = _settings.BucketName,
+                Key = metadata.BlobPath
+            };
 
-            var response = await blobClient.DownloadStreamingAsync(cancellationToken: cancellationToken);
+            var response = await _s3Client.GetObjectAsync(request, cancellationToken);
             
-            _logger.LogInformation("Document downloaded: {DocumentId} by path: {BlobPath}", documentId, metadata.BlobPath);
+            _logger.LogInformation("Document downloaded: {DocumentId} by key: {S3Key}", documentId, metadata.BlobPath);
             
-            return response.Value.Content;
+            return response.ResponseStream;
         }
         catch (Exception ex)
         {
@@ -156,15 +142,17 @@ public class DocumentStorageService : IDocumentStorageService
                 return false;
             }
 
-            var blobClient = _containerClient.GetBlobClient(metadata.BlobPath);
-            var response = await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
-            
-            if (response.Value)
+            var request = new DeleteObjectRequest
             {
-                _logger.LogInformation("Document deleted: {DocumentId}, Blob: {BlobPath}", documentId, metadata.BlobPath);
-            }
+                BucketName = _settings.BucketName,
+                Key = metadata.BlobPath
+            };
+
+            var response = await _s3Client.DeleteObjectAsync(request, cancellationToken);
             
-            return response.Value;
+            _logger.LogInformation("Document deleted: {DocumentId}, S3 Key: {S3Key}", documentId, metadata.BlobPath);
+            
+            return true;
         }
         catch (Exception ex)
         {
@@ -199,29 +187,20 @@ public class DocumentStorageService : IDocumentStorageService
                 throw new FileNotFoundException($"Document {documentId} not found");
             }
 
-            var blobClient = _containerClient.GetBlobClient(metadata.BlobPath);
-
-            if (!blobClient.CanGenerateSasUri)
+            var request = new GetPreSignedUrlRequest
             {
-                throw new InvalidOperationException("Cannot generate SAS token with current authentication method");
-            }
-
-            var sasBuilder = new BlobSasBuilder
-            {
-                BlobContainerName = _containerClient.Name,
-                BlobName = metadata.BlobPath,
-                Resource = "b",
-                ExpiresOn = DateTimeOffset.UtcNow.Add(expiry)
+                BucketName = _settings.BucketName,
+                Key = metadata.BlobPath,
+                Expires = DateTime.UtcNow.Add(expiry),
+                Verb = HttpVerb.GET
             };
 
-            sasBuilder.SetPermissions(BlobSasPermissions.Read);
-
-            var sasToken = blobClient.GenerateSasUri(sasBuilder);
+            var presignedUrl = _s3Client.GetPreSignedURL(request);
             
-            _logger.LogInformation("Generated SAS token for document: {DocumentId}, Expires: {ExpiresOn}", 
-                documentId, sasBuilder.ExpiresOn);
+            _logger.LogInformation("Generated presigned URL for document: {DocumentId}, Expires: {Expires}", 
+                documentId, request.Expires);
             
-            return sasToken.ToString();
+            return presignedUrl;
         }
         catch (Exception ex)
         {
@@ -266,22 +245,34 @@ public class DocumentStorageService : IDocumentStorageService
         {
             var cutoffDate = DateTime.UtcNow.AddDays(-_settings.DocumentRetentionDays);
             
-            await foreach (var blobItem in _containerClient.GetBlobsAsync(
-                BlobTraits.Metadata | BlobTraits.Tags, 
-                cancellationToken: cancellationToken))
+            var listRequest = new ListObjectsV2Request
             {
-                if (blobItem.Properties.LastModified?.DateTime < cutoffDate)
+                BucketName = _settings.BucketName
+            };
+
+            ListObjectsV2Response listResponse;
+            do
+            {
+                listResponse = await _s3Client.ListObjectsV2Async(listRequest, cancellationToken);
+                
+                foreach (var s3Object in listResponse.S3Objects)
                 {
-                    var blobClient = _containerClient.GetBlobClient(blobItem.Name);
-                    var deleted = await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
-                    
-                    if (deleted.Value)
+                    if (s3Object.LastModified < cutoffDate)
                     {
+                        var deleteRequest = new DeleteObjectRequest
+                        {
+                            BucketName = _settings.BucketName,
+                            Key = s3Object.Key
+                        };
+
+                        await _s3Client.DeleteObjectAsync(deleteRequest, cancellationToken);
                         cleanedCount++;
-                        _logger.LogInformation("Cleaned up expired document: {BlobName}", blobItem.Name);
+                        _logger.LogInformation("Cleaned up expired document: {S3Key}", s3Object.Key);
                     }
                 }
-            }
+                
+                listRequest.ContinuationToken = listResponse.NextContinuationToken;
+            } while (listResponse.IsTruncated);
             
             _logger.LogInformation("Cleanup completed. Removed {Count} expired documents", cleanedCount);
         }
@@ -293,7 +284,7 @@ public class DocumentStorageService : IDocumentStorageService
         return cleanedCount;
     }
 
-    private string GenerateBlobPath(Guid userId, string fileName)
+    private string GenerateS3Key(Guid userId, string fileName)
     {
         var sanitizedFileName = Path.GetFileName(fileName);
         var fileExtension = Path.GetExtension(sanitizedFileName);

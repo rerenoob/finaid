@@ -37,8 +37,15 @@ guidance for development.
 - Dependency Injection for all services
 - Repository pattern with Entity Framework
 - CQRS-inspired service layer
-- Azure integration patterns for cloud services
+- AWS integration patterns for cloud services
 - XUnit for testing with Moq and FluentAssertions
+
+## AWS Configuration
+- **AI Service**: AWS Bedrock with Claude model (anthropic.claude-3-sonnet-20240229-v1:0)
+- **Document Processing**: AWS Textract for OCR
+- **File Storage**: AWS S3 for document storage
+- **Configuration**: AWS settings in `appsettings.json` (Region, AccessKeyId, SecretAccessKey)
+- **Required Services**: Bedrock, Textract, S3, Secrets Manager
 
 ## Key Conventions
 - Nullable reference types enabled

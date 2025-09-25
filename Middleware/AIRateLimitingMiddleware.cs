@@ -11,13 +11,13 @@ namespace finaid.Middleware;
 public class AIRateLimitingMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly AzureOpenAISettings _settings;
+    private readonly AWSBedrockSettings _settings;
     private readonly IMemoryCache _cache;
     private readonly ILogger<AIRateLimitingMiddleware> _logger;
 
     public AIRateLimitingMiddleware(
         RequestDelegate next,
-        IOptions<AzureOpenAISettings> settings,
+        IOptions<AWSBedrockSettings> settings,
         IMemoryCache cache,
         ILogger<AIRateLimitingMiddleware> logger)
     {
@@ -96,18 +96,16 @@ public class AIRateLimitingMiddleware
         var requestCount = await GetCountFromCacheAsync(requestCountKey);
         var tokenCount = await GetCountFromCacheAsync(tokenCountKey);
 
-        // Check request rate limit
-        if (requestCount >= _settings.RequestsPerMinute)
+        // Check request rate limit - AWS Bedrock has different rate limiting
+        // For now, use a reasonable default since AWS handles rate limiting at the service level
+        var maxRequestsPerMinute = 60; // Default rate limit
+        if (requestCount >= maxRequestsPerMinute)
         {
             return true;
         }
 
-        // Check token rate limit (approximated based on average request size)
-        var estimatedTokensPerRequest = 1000; // Conservative estimate
-        if (tokenCount + estimatedTokensPerRequest >= _settings.TokensPerMinute)
-        {
-            return true;
-        }
+        // AWS Bedrock handles token rate limiting at the service level
+        // No need for client-side token counting
 
         return false;
     }
